@@ -1,0 +1,13 @@
+[package]
+name = "graviola-0_4"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[package.metadata.bench]
+# Only x86_64 and aarch64 have assembly backends; `run.sh` skips other architectures.
+arches = ["x86_64", "aarch64"]
+
+[dependencies]
+harness = { path = "../../harness" }
+graviola = "=0.4.1"
