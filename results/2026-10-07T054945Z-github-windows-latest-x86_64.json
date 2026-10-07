@@ -1,0 +1,382 @@
+{
+  "schema": 2,
+  "machine": "github-windows-latest-x86_64",
+  "meta": {
+    "date": "2026-10-07T05:49:45Z",
+    "arch": "x86_64",
+    "os": "windows",
+    "cpu": "AMD EPYC 9V45 96-Core Processor",
+    "cpu_count": 4,
+    "cpu_features": [
+      "ssse3",
+      "avx",
+      "avx2",
+      "avx512f",
+      "avx512vl"
+    ],
+    "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+    "commit": "a53f4a5da12ab1d2f712125e919c072b3acd0852",
+    "quick": false,
+    "preflight": {
+      "cpu_busy_pct": 1.8,
+      "power": {
+        "source": "ac",
+        "low_power_mode": false,
+        "profile": null,
+        "governor": null
+      },
+      "forced": []
+    },
+    "placement": {
+      "method": "affinity",
+      "cpu": 0,
+      "cpu_max_mhz": null,
+      "efficiency_class": 0
+    },
+    "rounds": 7
+  },
+  "implementations": [
+    {
+      "impl": "aws-lc-rs-1.18",
+      "library": "aws-lc-rs",
+      "crates": [
+        {
+          "name": "aws-lc-rs",
+          "version": "1.18.1"
+        }
+      ],
+      "config": {
+        "samples": 15,
+        "sample_time_ms": 20,
+        "warmup_ms": 200
+      },
+      "results": [
+        {
+          "op": "seal",
+          "size": 1280,
+          "median_ns": 597.563,
+          "q1_ns": 597.078,
+          "q3_ns": 605.6915,
+          "min_ns": 593.958,
+          "mib_per_s": 2042.8023907102681,
+          "samples": 105,
+          "round_medians_ns": [
+            596.05,
+            597.563,
+            596.651,
+            610.313,
+            601.07,
+            614.921,
+            597.505
+          ],
+          "spread_pct": 1.6
+        },
+        {
+          "op": "open",
+          "size": 1280,
+          "median_ns": 666.935,
+          "q1_ns": 665.2684999999999,
+          "q3_ns": 673.492,
+          "min_ns": 660.509,
+          "mib_per_s": 1830.317984511234,
+          "samples": 105,
+          "round_medians_ns": [
+            666.935,
+            702.535,
+            663.742,
+            666.795,
+            675.708,
+            663.392,
+            671.276
+          ],
+          "spread_pct": 2.9
+        }
+      ]
+    },
+    {
+      "impl": "graviola-0.4",
+      "library": "graviola",
+      "crates": [
+        {
+          "name": "graviola",
+          "version": "0.4.1"
+        }
+      ],
+      "config": {
+        "samples": 15,
+        "sample_time_ms": 20,
+        "warmup_ms": 200
+      },
+      "results": [
+        {
+          "op": "seal",
+          "size": 1280,
+          "median_ns": 1592.203,
+          "q1_ns": 1545.9389999999999,
+          "q3_ns": 1618.1745,
+          "min_ns": 1520.701,
+          "mib_per_s": 766.6755589582484,
+          "samples": 105,
+          "round_medians_ns": [
+            1562.822,
+            1594.224,
+            1528.844,
+            1642.125,
+            1529.056,
+            1685.288,
+            1592.203
+          ],
+          "spread_pct": 4.9
+        },
+        {
+          "op": "open",
+          "size": 1280,
+          "median_ns": 1575.539,
+          "q1_ns": 1548.1460000000002,
+          "q3_ns": 1622.2705,
+          "min_ns": 1534.075,
+          "mib_per_s": 774.7844547167667,
+          "samples": 105,
+          "round_medians_ns": [
+            1557.804,
+            1589.653,
+            1538.488,
+            1654.888,
+            1537.266,
+            1663.032,
+            1575.539
+          ],
+          "spread_pct": 4.0
+        }
+      ]
+    },
+    {
+      "impl": "libcrux-0.0.9",
+      "library": "libcrux",
+      "crates": [
+        {
+          "name": "libcrux-chacha20poly1305",
+          "version": "0.0.9"
+        }
+      ],
+      "config": {
+        "samples": 15,
+        "sample_time_ms": 20,
+        "warmup_ms": 200
+      },
+      "results": [
+        {
+          "op": "seal",
+          "size": 1280,
+          "median_ns": 1836.057,
+          "q1_ns": 1830.6395,
+          "q3_ns": 1840.004,
+          "min_ns": 1821.194,
+          "mib_per_s": 664.8503423368663,
+          "samples": 105,
+          "round_medians_ns": [
+            1831.743,
+            1842.27,
+            1974.625,
+            1836.057,
+            1826.937,
+            1829.536,
+            1837.738
+          ],
+          "spread_pct": 4.0
+        },
+        {
+          "op": "open",
+          "size": 1280,
+          "median_ns": 1839.34,
+          "q1_ns": 1837.4325,
+          "q3_ns": 1844.1390000000001,
+          "min_ns": 1829.275,
+          "mib_per_s": 663.6636646840715,
+          "samples": 105,
+          "round_medians_ns": [
+            1847.961,
+            1836.384,
+            1906.573,
+            1838.481,
+            1835.8,
+            1840.317,
+            1839.34
+          ],
+          "spread_pct": 1.9
+        }
+      ]
+    },
+    {
+      "impl": "ring-0.17",
+      "library": "ring",
+      "crates": [
+        {
+          "name": "ring",
+          "version": "0.17.14"
+        }
+      ],
+      "config": {
+        "samples": 15,
+        "sample_time_ms": 20,
+        "warmup_ms": 200
+      },
+      "results": [
+        {
+          "op": "seal",
+          "size": 1280,
+          "median_ns": 585.291,
+          "q1_ns": 583.7925,
+          "q3_ns": 586.279,
+          "min_ns": 582.088,
+          "mib_per_s": 2085.6345390583483,
+          "samples": 105,
+          "round_medians_ns": [
+            585.291,
+            584.09,
+            583.495,
+            587.462,
+            583.408,
+            587.057,
+            585.501
+          ],
+          "spread_pct": 0.3
+        },
+        {
+          "op": "open",
+          "size": 1280,
+          "median_ns": 667.2,
+          "q1_ns": 664.79,
+          "q3_ns": 670.3645,
+          "min_ns": 656.998,
+          "mib_per_s": 1829.5910146882493,
+          "samples": 105,
+          "round_medians_ns": [
+            689.915,
+            670.7,
+            670.029,
+            667.2,
+            659.787,
+            663.281,
+            666.299
+          ],
+          "spread_pct": 2.3
+        }
+      ]
+    },
+    {
+      "impl": "rustcrypto-0.10",
+      "library": "RustCrypto",
+      "crates": [
+        {
+          "name": "chacha20poly1305",
+          "version": "0.10.1"
+        }
+      ],
+      "config": {
+        "samples": 15,
+        "sample_time_ms": 20,
+        "warmup_ms": 200
+      },
+      "results": [
+        {
+          "op": "seal",
+          "size": 1280,
+          "median_ns": 2000.444,
+          "q1_ns": 1994.2445,
+          "q3_ns": 2026.392,
+          "min_ns": 1987.478,
+          "mib_per_s": 610.216094527015,
+          "samples": 105,
+          "round_medians_ns": [
+            2008.833,
+            2052.54,
+            2000.444,
+            1991.284,
+            1995.106,
+            2043.951,
+            1993.383
+          ],
+          "spread_pct": 1.5
+        },
+        {
+          "op": "open",
+          "size": 1280,
+          "median_ns": 1993.081,
+          "q1_ns": 1992.2635,
+          "q3_ns": 2010.018,
+          "min_ns": 1986.984,
+          "mib_per_s": 612.4704038621611,
+          "samples": 105,
+          "round_medians_ns": [
+            2020.481,
+            1999.555,
+            1992.093,
+            1991.507,
+            1992.434,
+            2061.699,
+            1993.081
+          ],
+          "spread_pct": 1.8
+        }
+      ]
+    },
+    {
+      "impl": "rustcrypto-0.11",
+      "library": "RustCrypto",
+      "crates": [
+        {
+          "name": "chacha20poly1305",
+          "version": "0.11.0"
+        }
+      ],
+      "config": {
+        "samples": 15,
+        "sample_time_ms": 20,
+        "warmup_ms": 200
+      },
+      "results": [
+        {
+          "op": "seal",
+          "size": 1280,
+          "median_ns": 1980.784,
+          "q1_ns": 1977.6415,
+          "q3_ns": 1982.6405,
+          "min_ns": 1971.359,
+          "mib_per_s": 616.2727107044483,
+          "samples": 105,
+          "round_medians_ns": [
+            1982.297,
+            1978.53,
+            1980.784,
+            1976.753,
+            1976.219,
+            2119.372,
+            1982.984
+          ],
+          "spread_pct": 3.6
+        },
+        {
+          "op": "open",
+          "size": 1280,
+          "median_ns": 1932.975,
+          "q1_ns": 1929.275,
+          "q3_ns": 1937.299,
+          "min_ns": 1924.032,
+          "mib_per_s": 631.5152161823097,
+          "samples": 105,
+          "round_medians_ns": [
+            2001.679,
+            1931.626,
+            1926.565,
+            1935.573,
+            1926.924,
+            1939.025,
+            1932.975
+          ],
+          "spread_pct": 1.9
+        }
+      ]
+    }
+  ]
+}
