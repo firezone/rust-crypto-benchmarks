@@ -33,6 +33,14 @@ jobs:
           fi
           rustup toolchain install
       - run: ./lint.sh
+      - name: Check the macOS and Windows code paths
+        run: |
+          targets="aarch64-apple-darwin x86_64-pc-windows-msvc"
+          rustup target add $targets
+          for target in $targets; do
+            cargo clippy --locked --target "$target" -- -D warnings
+            cargo clippy --locked --target "$target" --manifest-path harness/Cargo.toml -- -D warnings
+          done
 
   bench:
     strategy:
@@ -43,8 +51,13 @@ jobs:
             machine: github-ubuntu-24.04-x86_64
           - runner: ubuntu-24.04-arm
             machine: github-ubuntu-24.04-arm-aarch64
+          - runner: windows-latest
+            machine: github-windows-latest-x86_64
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 30
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install Rust
