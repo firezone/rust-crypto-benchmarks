@@ -1,0 +1,6 @@
+# Applies to every crate under `impls/`, so all implementations are built the same way.
+# Neither `-C target-cpu` nor `-C target-feature` is set: libraries pick their
+# SIMD backends via runtime detection, as they do in real deployments.
+[profile.release]
+lto = "fat"
+codegen-units = 1
