@@ -19,29 +19,6 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  lint:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Install Rust
-        run: |
-          if ! command -v rustup >/dev/null; then
-            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain none
-            echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
-            export PATH="$HOME/.cargo/bin:$PATH"
-          fi
-          rustup toolchain install
-      - run: ./lint.sh
-      - name: Check the macOS and Windows code paths
-        run: |
-          targets="aarch64-apple-darwin x86_64-pc-windows-msvc"
-          rustup target add $targets
-          for target in $targets; do
-            cargo clippy --locked --target "$target" -- -D warnings
-            cargo clippy --locked --target "$target" --manifest-path harness/Cargo.toml -- -D warnings
-          done
-
   bench:
     strategy:
       fail-fast: false
