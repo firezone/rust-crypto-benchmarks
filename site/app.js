@@ -56,6 +56,15 @@ function libraryColors(runs) {
   return new Map(libs.map((lib, i) => [lib, `var(--lib-${(i % 8) + 1})`]));
 }
 
+function describePlacement(p) {
+  if (!p) return "not recorded";
+  if (p.method === "qos") return "QoS user-interactive (prefers performance cores)";
+  const parts = [`pinned to CPU ${p.cpu}`];
+  if (p.cpu_max_mhz) parts.push(`max ${fmt(p.cpu_max_mhz, 0)} MHz`);
+  if (p.efficiency_class != null) parts.push(`efficiency class ${p.efficiency_class}`);
+  return parts.join(", ");
+}
+
 function renderMeta(run) {
   const m = run.meta;
   const p = m.preflight;
@@ -82,6 +91,8 @@ function renderMeta(run) {
     ],
     ["CPU busy before run", p && p.cpu_busy_pct != null ? `${fmt(p.cpu_busy_pct, 1)}%` : "not recorded"],
     ["Power", power.length ? power.join(", ") : "not recorded"],
+    ["Placement", describePlacement(m.placement)],
+    ["Rounds", m.rounds ? `${m.rounds}, interleaved` : "1"],
   ];
   document
     .getElementById("meta")
@@ -124,8 +135,17 @@ function renderOp(run, op, colors) {
         el("span", { class: "crates" }, imp.crates.map((c) => `${c.name} ${c.version}`).join(", ")),
         el("div", { class: "bar-inline", "aria-hidden": "true" }, bar()),
       ),
-      el("td", { class: "num" }, formatTime(m.median_ns)),
-      el("td", { class: "num col-iqr" }, `${formatTime(m.q1_ns)} to ${formatTime(m.q3_ns)}`),
+      el(
+        "td",
+        { class: "num" },
+        formatTime(m.median_ns),
+        m.spread_pct != null ? el("span", { class: "spread-inline" }, `±${fmt(m.spread_pct, 1)}%`) : null,
+      ),
+      el(
+        "td",
+        { class: "num col-spread", title: m.round_medians_ns ? `Round medians: ${m.round_medians_ns.map(formatTime).join(", ")}` : "" },
+        m.spread_pct != null ? `±${fmt(m.spread_pct, 1)}%` : "n/a",
+      ),
       el("td", { class: "num" }, formatRate(m.mib_per_s)),
       el("td", { class: "bar-cell", "aria-hidden": "true" }, bar()),
     );
@@ -147,7 +167,7 @@ function renderOp(run, op, colors) {
           {},
           el("th", { scope: "col" }, "Implementation"),
           el("th", { scope: "col", class: "num" }, "Median"),
-          el("th", { scope: "col", class: "num col-iqr" }, "IQR"),
+          el("th", { scope: "col", class: "num col-spread", title: "Half the range of the per-round medians, relative to the median" }, "Spread"),
           el("th", { scope: "col", class: "num" }, "Throughput"),
           el("th", { scope: "col", class: "bar-cell" }, el("span", { class: "visually-hidden" }, "Relative")),
         ),

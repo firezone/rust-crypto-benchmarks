@@ -308,14 +308,21 @@ td.num {
   font-size: 0.8125rem;
 }
 
-.bar-inline {
+.bar-inline,
+.spread-inline {
   display: none;
 }
 
 @media (max-width: 640px) {
-  .col-iqr,
-  .bar-cell {
+  .bar-cell,
+  .col-spread {
     display: none;
+  }
+
+  .spread-inline {
+    display: block;
+    color: var(--text-3);
+    font-size: 0.75rem;
   }
 
   .bar-inline {
