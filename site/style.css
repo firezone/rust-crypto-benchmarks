@@ -11,7 +11,6 @@
   --warn-bg: #fff4d6;
   --warn-border: #c98500;
   --accent: #2a78d6;
-  --on-accent: #ffffff;
   --lib-1: #2a78d6;
   --lib-2: #eb6834;
   --lib-3: #1baf7a;
@@ -36,7 +35,6 @@
     --warn-bg: #3a2f12;
     --warn-border: #c98500;
     --accent: #3987e5;
-  --on-accent: #0b0b0b;
     --lib-1: #3987e5;
     --lib-2: #d95926;
     --lib-3: #199e70;
@@ -61,7 +59,6 @@
   --warn-bg: #3a2f12;
   --warn-border: #c98500;
   --accent: #3987e5;
-  --on-accent: #0b0b0b;
   --lib-1: #3987e5;
   --lib-2: #d95926;
   --lib-3: #199e70;
@@ -120,36 +117,35 @@ h1 {
   margin-bottom: 12px;
 }
 
-.arch-picker {
-  display: inline-flex;
+.controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.75rem;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.controls select {
+  font: inherit;
+  font-size: 0.9375rem;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--text);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
-  overflow: hidden;
-}
-
-.arch-picker button {
-  font: inherit;
-  padding: 6px 14px;
-  border: 0;
-  background: var(--surface);
-  color: var(--text-2);
-  cursor: pointer;
+  padding: 6px 8px;
   min-height: 36px;
+  max-width: 100%;
 }
 
-.arch-picker button + button {
-  border-left: 1px solid var(--border);
-}
-
-.arch-picker button[aria-pressed="true"] {
-  background: var(--accent);
-  color: var(--on-accent);
-  font-weight: 600;
-}
-
-.arch-picker button:focus-visible {
+.controls select:focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: -4px;
+  outline-offset: 1px;
 }
 
 .meta {
@@ -193,14 +189,6 @@ h1 {
   font-size: 0.875rem;
 }
 
-.toc {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 16px;
-  margin-bottom: 8px;
-  font-size: 0.875rem;
-}
-
 .legend {
   display: flex;
   flex-wrap: wrap;
@@ -221,33 +209,23 @@ h1 {
   vertical-align: baseline;
 }
 
-.op {
-  margin: 24px 0;
-}
-
-.op h2 {
+.case h2 {
   margin: 0 0 4px;
   font-size: 1.25rem;
 }
 
-.op .op-note {
+.op-note {
   margin: 0 0 8px;
   color: var(--text-2);
   font-size: 0.875rem;
 }
 
 .case {
-  margin: 0 0 16px;
+  margin: 16px 0;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 12px 16px;
-}
-
-.case h3 {
-  margin: 0 0 8px;
-  font-size: 1rem;
-  font-weight: 600;
 }
 
 table {
