@@ -1,0 +1,265 @@
+{
+  "schema": 1,
+  "machine": "apple-m2-pro-macos",
+  "meta": {
+    "date": "2026-10-07T05:24:31Z",
+    "arch": "aarch64",
+    "os": "macos",
+    "cpu": "Apple M2 Pro",
+    "cpu_count": 12,
+    "cpu_features": [
+      "neon"
+    ],
+    "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+    "commit": null,
+    "quick": false,
+    "preflight": {
+      "cpu_busy_pct": 43.8,
+      "power": {
+        "source": "ac",
+        "low_power_mode": false,
+        "profile": null,
+        "governor": null
+      },
+      "forced": [
+        "cpu busy: 43.8% over 3 s"
+      ]
+    }
+  },
+  "implementations": [
+    {
+      "impl": "aws-lc-rs-1.18",
+      "library": "aws-lc-rs",
+      "crates": [
+        {
+          "name": "aws-lc-rs",
+          "version": "1.18.1"
+        }
+      ],
+      "config": {
+        "samples": 101,
+        "sample_time_ms": 20,
+        "warmup_ms": 500
+      },
+      "results": [
+        {
+          "op": "seal",
+          "size": 1280,
+          "median_ns": 1001.681,
+          "q1_ns": 993.154,
+          "q3_ns": 1012.294,
+          "min_ns": 964.996,
+          "mib_per_s": 1218.65,
+          "samples": 101,
+          "iters_per_sample": 20000
+        },
+        {
+          "op": "open",
+          "size": 1280,
+          "median_ns": 1005.001,
+          "q1_ns": 990.578,
+          "q3_ns": 1016.402,
+          "min_ns": 960.785,
+          "mib_per_s": 1214.63,
+          "samples": 101,
+          "iters_per_sample": 21603
+        }
+      ]
+    },
+    {
+      "impl": "graviola-0.4",
+      "library": "graviola",
+      "crates": [
+        {
+          "name": "graviola",
+          "version": "0.4.1"
+        }
+      ],
+      "config": {
+        "samples": 101,
+        "sample_time_ms": 20,
+        "warmup_ms": 500
+      },
+      "results": [
+        {
+          "op": "seal",
+          "size": 1280,
+          "median_ns": 2942.13,
+          "q1_ns": 2796.967,
+          "q3_ns": 3109.751,
+          "min_ns": 2734.207,
+          "mib_per_s": 414.9,
+          "samples": 101,
+          "iters_per_sample": 6894
+        },
+        {
+          "op": "open",
+          "size": 1280,
+          "median_ns": 2800.288,
+          "q1_ns": 2777.815,
+          "q3_ns": 2838.047,
+          "min_ns": 2741.273,
+          "mib_per_s": 435.92,
+          "samples": 101,
+          "iters_per_sample": 7090
+        }
+      ]
+    },
+    {
+      "impl": "libcrux-0.0.9",
+      "library": "libcrux",
+      "crates": [
+        {
+          "name": "libcrux-chacha20poly1305",
+          "version": "0.0.9"
+        }
+      ],
+      "config": {
+        "samples": 101,
+        "sample_time_ms": 20,
+        "warmup_ms": 500
+      },
+      "results": [
+        {
+          "op": "seal",
+          "size": 1280,
+          "median_ns": 2961.554,
+          "q1_ns": 2909.853,
+          "q3_ns": 3025.33,
+          "min_ns": 2794.608,
+          "mib_per_s": 412.18,
+          "samples": 101,
+          "iters_per_sample": 7167
+        },
+        {
+          "op": "open",
+          "size": 1280,
+          "median_ns": 3032.393,
+          "q1_ns": 2958.44,
+          "q3_ns": 3261.619,
+          "min_ns": 2862.944,
+          "mib_per_s": 402.55,
+          "samples": 101,
+          "iters_per_sample": 7054
+        }
+      ]
+    },
+    {
+      "impl": "ring-0.17",
+      "library": "ring",
+      "crates": [
+        {
+          "name": "ring",
+          "version": "0.17.14"
+        }
+      ],
+      "config": {
+        "samples": 101,
+        "sample_time_ms": 20,
+        "warmup_ms": 500
+      },
+      "results": [
+        {
+          "op": "seal",
+          "size": 1280,
+          "median_ns": 956.192,
+          "q1_ns": 947.487,
+          "q3_ns": 976.271,
+          "min_ns": 933.006,
+          "mib_per_s": 1276.63,
+          "samples": 101,
+          "iters_per_sample": 21466
+        },
+        {
+          "op": "open",
+          "size": 1280,
+          "median_ns": 951.996,
+          "q1_ns": 920.361,
+          "q3_ns": 1004.617,
+          "min_ns": 886.353,
+          "mib_per_s": 1282.26,
+          "samples": 101,
+          "iters_per_sample": 21757
+        }
+      ]
+    },
+    {
+      "impl": "rustcrypto-0.10",
+      "library": "RustCrypto",
+      "crates": [
+        {
+          "name": "chacha20poly1305",
+          "version": "0.10.1"
+        }
+      ],
+      "config": {
+        "samples": 101,
+        "sample_time_ms": 20,
+        "warmup_ms": 500
+      },
+      "results": [
+        {
+          "op": "seal",
+          "size": 1280,
+          "median_ns": 3113.127,
+          "q1_ns": 2977.538,
+          "q3_ns": 3202.344,
+          "min_ns": 2815.795,
+          "mib_per_s": 392.11,
+          "samples": 101,
+          "iters_per_sample": 7075
+        },
+        {
+          "op": "open",
+          "size": 1280,
+          "median_ns": 2966.502,
+          "q1_ns": 2943.751,
+          "q3_ns": 3010.43,
+          "min_ns": 2852.49,
+          "mib_per_s": 411.5,
+          "samples": 101,
+          "iters_per_sample": 7095
+        }
+      ]
+    },
+    {
+      "impl": "rustcrypto-0.11",
+      "library": "RustCrypto",
+      "crates": [
+        {
+          "name": "chacha20poly1305",
+          "version": "0.11.0"
+        }
+      ],
+      "config": {
+        "samples": 101,
+        "sample_time_ms": 20,
+        "warmup_ms": 500
+      },
+      "results": [
+        {
+          "op": "seal",
+          "size": 1280,
+          "median_ns": 2215.808,
+          "q1_ns": 2172.574,
+          "q3_ns": 2288.189,
+          "min_ns": 2132.669,
+          "mib_per_s": 550.91,
+          "samples": 101,
+          "iters_per_sample": 9226
+        },
+        {
+          "op": "open",
+          "size": 1280,
+          "median_ns": 2251.099,
+          "q1_ns": 2183.719,
+          "q3_ns": 2410.149,
+          "min_ns": 2167.494,
+          "mib_per_s": 542.27,
+          "samples": 101,
+          "iters_per_sample": 9212
+        }
+      ]
+    }
+  ]
+}
