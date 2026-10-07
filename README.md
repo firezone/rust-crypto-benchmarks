@@ -6,11 +6,15 @@ should use instead of `ring`. Transport data dominates a tunnel's throughput, so
 measures: sealing and opening 1280-byte messages in place.
 
 Results from every machine are collected at <https://firezone.github.io/rust-crypto-benchmarks/>.
-CI adds runs from GitHub's x86_64 and aarch64 runners on every push to `main` and weekly.
+CI adds runs from GitHub's Linux x86_64 and aarch64 and Windows x86_64 runners on every push to
+`main` and weekly.
 
 ## Submit results from your machine
 
-You need [Rust](https://rustup.rs); the right toolchain is installed automatically.
+You need [Rust](https://rustup.rs); the right toolchain is installed automatically. Linux, macOS
+and Windows are supported. On Windows, `ring` needs the MSVC build tools (which rustup offers to
+install) and `aws-lc-rs` additionally needs CMake and NASM; without them those implementations
+are skipped.
 
 1. Clone the repository and run the benchmarks:
 
@@ -27,7 +31,8 @@ You need [Rust](https://rustup.rs); the right toolchain is installed automatical
 work: close heavy applications and plug in laptops first. Implementations that do not build on
 your machine (for example `aws-lc-rs` without a C toolchain) are skipped with a warning. The
 results file names your machine after its CPU and OS (never its hostname); pass `--machine LABEL`
-to choose another name. See `cargo run -- --help` for all options.
+to choose another name. See `cargo run -- --help` for all options, such as `--cpu N` to pin the
+benchmarks to another core or `--rounds N`.
 
 ## Layout
 
@@ -66,9 +71,18 @@ arches = ["x86_64", "aarch64"]
 
 ## Method
 
-- A hand-rolled timing loop: about 0.5 s of warm-up that also calibrates the batch size, then 101
-  batches of about 20 ms each. The median of the per-message batch times is reported with the
-  quartiles and minimum. Inputs and outputs go through `std::hint::black_box`.
+- Every implementation is measured in 7 interleaved rounds: each round runs every implementation
+  once, in an order rotated by one position per round, so drift over time (thermals, background
+  work) spreads evenly instead of always hitting whichever runs last. Within a round, a
+  hand-rolled timing loop warms up for 0.2 s (which also calibrates the batch size) and then takes
+  15 batches of about 20 ms. The reported time is the median of the round medians; the "±" is half
+  the range of the round medians, relative to that median. Inputs and outputs go through
+  `std::hint::black_box`.
+- On hybrid CPUs, the core type a process lands on can matter more than the library. So on Linux
+  and Windows every benchmark process is pinned to the same logical CPU: the one with the highest
+  maximum frequency (Linux) or efficiency class (Windows), lowest index on ties. Windows processes
+  are also exempted from power throttling (EcoQoS). macOS has no affinity API, so there the
+  benchmark raises its QoS class to user-interactive, which keeps it on the performance cores.
 - Neither `-C target-cpu` nor `-C target-feature` is set: libraries choose their SIMD backends by
   runtime detection, as they would in a real deployment. Release builds use `lto = "fat"` and
   `codegen-units = 1` (see `.cargo/config.toml`), and the toolchain is pinned in `rust-toolchain.toml`.
