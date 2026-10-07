@@ -7,8 +7,10 @@ use std::process::{Command, ExitCode, Stdio};
 use anstream::println;
 
 use crate::machine::{self, Machine};
+use crate::placement;
 use crate::preflight::{self, Verdict};
-use crate::schema::{self, Meta, Op, Preflight, Report, RunFile};
+use crate::rounds::{self, Budget};
+use crate::schema::{self, Meta, Op, Placement, PlacementMethod, Preflight, Report, RunFile};
 use crate::ui::{self, BAD, BEST, BOLD, DIM, GOOD, Progress, WARN};
 
 #[derive(clap::Args, Debug, Default)]
@@ -27,6 +29,14 @@ pub struct RunArgs {
     /// Label for this machine in the results [default: derived from the CPU model and OS]
     #[arg(long, value_name = "LABEL")]
     pub machine: Option<String>,
+
+    /// Measure in this many interleaved rounds [default: 7, or 3 with --quick]
+    #[arg(long, value_name = "N", value_parser = clap::value_parser!(u32).range(1..=100))]
+    pub rounds: Option<u32>,
+
+    /// Pin the benchmarks to this logical CPU [default: the fastest one] (Linux and Windows)
+    #[arg(long, value_name = "N")]
+    pub cpu: Option<u32>,
 
     /// Directory to save the results file in
     #[arg(long, value_name = "DIR", default_value = "results")]
@@ -66,6 +76,26 @@ pub fn run(args: RunArgs) -> ExitCode {
     );
     ui::field("system", &format!("{} {}", machine.os, machine.arch));
     ui::field("compiler", &machine.rustc);
+    let placement = match placement::choose(args.cpu) {
+        Ok(placement) => placement,
+        Err(e) => {
+            println!("{BAD}error:{BAD:#} --cpu: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+    ui::field("placement", &placement::describe(placement.as_ref()));
+    if args.cpu.is_some()
+        && placement
+            .as_ref()
+            .is_none_or(|p| p.method != PlacementMethod::Affinity)
+    {
+        ui::warning("--cpu is ignored: this system cannot pin processes to a CPU");
+    }
+    let rounds = args.rounds.unwrap_or(if args.quick {
+        rounds::DEFAULT_QUICK_ROUNDS
+    } else {
+        rounds::DEFAULT_ROUNDS
+    });
     if args.quick {
         ui::warning(
             "--quick: few, short samples, fine for checking the setup but not for submitting",
@@ -114,26 +144,54 @@ pub fn run(args: RunArgs) -> ExitCode {
     let (cpu_busy_pct, finding) = preflight::cpu_busy();
     ui::finding(&finding);
     if finding.verdict == Verdict::Fail {
-        if !args.force {
+        // CI runners cannot be asked to close anything, so there it is only recorded.
+        if !(args.force || ci) {
             return refuse();
         }
         forced.extend(failures(&[finding]));
     }
 
-    ui::heading("Benchmarking (ChaCha20-Poly1305, 1280-byte messages)");
+    ui::heading(&format!(
+        "Benchmarking (ChaCha20-Poly1305, 1280-byte messages, {rounds} interleaved rounds)"
+    ));
     let reports_dir = Path::new(TARGET_DIR).join("reports");
     if let Err(e) = std::fs::create_dir_all(&reports_dir) {
         println!("{BAD}error:{BAD:#} {}: {e}", reports_dir.display());
         return ExitCode::FAILURE;
     }
-    let mut reports = Vec::new();
+    let budget = Budget::per_round(rounds, args.quick);
+    let mut active = built.iter().collect::<Vec<_>>();
+    let mut per_impl = (0..built.len()).map(|_| Vec::new()).collect::<Vec<_>>();
     let mut failed = Vec::new();
-    for imp in &built {
-        match bench(imp, &reports_dir, args.quick) {
-            Ok(report) => reports.push(report),
-            Err(()) => failed.push(imp.name.clone()),
+    for round in 0..rounds {
+        let progress = Progress::quiet(&format!("round {}/{rounds}", round + 1));
+        let mut dropped = Vec::new();
+        for imp in rounds::order(&active, round) {
+            let index = built
+                .iter()
+                .position(|b| b.name == imp.name)
+                .expect("built");
+            match bench(imp, &reports_dir, &budget, placement.as_ref(), &progress) {
+                Ok(report) => per_impl[index].push(report),
+                Err(problems) => {
+                    println!("  {BAD}{} FAILED{BAD:#}", imp.name);
+                    for line in problems {
+                        println!("      {BAD}{line}{BAD:#}");
+                    }
+                    failed.push(imp.name.clone());
+                    per_impl[index].clear();
+                    dropped.push(imp.name.clone());
+                }
+            }
         }
+        active.retain(|imp| !dropped.contains(&imp.name));
+        progress.finish(GOOD, "done");
     }
+    let reports = per_impl
+        .into_iter()
+        .filter(|r| !r.is_empty())
+        .map(rounds::aggregate)
+        .collect::<Vec<_>>();
     if reports.is_empty() {
         println!("{BAD}error:{BAD:#} no implementation produced results");
         return ExitCode::FAILURE;
@@ -159,6 +217,8 @@ pub fn run(args: RunArgs) -> ExitCode {
                 power,
                 forced,
             }),
+            placement,
+            rounds: Some(rounds),
         },
         implementations: reports,
     };
@@ -273,9 +333,10 @@ fn build(imp: &Impl, arch: &str) -> bool {
             true
         }
         Ok(out) => {
-            progress.finish(WARN, "skipped: failed to build");
             let stderr = String::from_utf8_lossy(&out.stderr);
             let lines = stderr.lines().collect::<Vec<_>>();
+            let reason = build_failure_reason(&lines);
+            progress.finish(WARN, &format!("skipped: failed to build ({reason})"));
             for line in &lines[lines.len().saturating_sub(12)..] {
                 println!("      {DIM}{line}{DIM:#}");
             }
@@ -292,9 +353,39 @@ fn build(imp: &Impl, arch: &str) -> bool {
     }
 }
 
-fn bench(imp: &Impl, reports_dir: &Path, quick: bool) -> Result<Report, ()> {
-    let progress = Progress::new(&imp.name);
-    progress.set("verifying test vectors");
+/// A one-line summary of a failed build, e.g. a missing tool like CMake, NASM or a C compiler.
+fn build_failure_reason(stderr: &[&str]) -> String {
+    let lower = stderr.join("\n").to_lowercase();
+    for (needle, reason) in [
+        ("nasm", "NASM not found"),
+        ("cmake", "CMake missing or failing"),
+        ("link.exe", "MSVC build tools not found"),
+        ("linker `cc` not found", "C toolchain not found"),
+        ("failed to find tool", "C compiler not found"),
+        ("is `cc` not installed", "C compiler not found"),
+    ] {
+        if lower.contains(needle) {
+            return reason.to_owned();
+        }
+    }
+    stderr
+        .iter()
+        .find(|l| l.trim_start().starts_with("error"))
+        .map_or("see the output below", |l| l.trim())
+        .chars()
+        .take(100)
+        .collect()
+}
+
+/// Runs one implementation for one round.
+fn bench(
+    imp: &Impl,
+    reports_dir: &Path,
+    budget: &Budget,
+    placement: Option<&Placement>,
+    progress: &Progress,
+) -> Result<Report, Vec<String>> {
+    progress.set(&format!("{}: verifying test vectors", imp.name));
     let out = reports_dir.join(format!("{}.json", imp.name));
     let binary = Path::new(TARGET_DIR).join("release").join(format!(
         "{}{}",
@@ -303,30 +394,27 @@ fn bench(imp: &Impl, reports_dir: &Path, quick: bool) -> Result<Report, ()> {
     ));
 
     let mut command = Command::new(&binary);
-    command.arg("--out").arg(&out);
-    if quick {
-        command.arg("--quick");
-    }
-    let mut child = match command
+    command.arg("--out").arg(&out).args(budget.args());
+    command
         .stdin(Stdio::null())
         .stdout(Stdio::null())
-        .stderr(Stdio::piped())
+        .stderr(Stdio::piped());
+    placement::before_spawn(&mut command, placement);
+    let mut child = command
         .spawn()
-    {
-        Ok(child) => child,
-        Err(e) => {
-            progress.finish(BAD, &format!("failed to start {}: {e}", binary.display()));
-            return Err(());
-        }
-    };
+        .map_err(|e| vec![format!("failed to start {}: {e}", binary.display())])?;
+    if let Err(e) = placement::after_spawn(&child, placement) {
+        let _ = child.kill();
+        return Err(vec![format!("failed to pin to the chosen CPU: {e}")]);
+    }
 
     let mut problems = Vec::new();
     if let Some(stderr) = child.stderr.take() {
         for line in BufReader::new(stderr).lines().map_while(Result::ok) {
             if let Some(op) = line.strip_prefix("bench ") {
-                progress.set(&format!("benchmarking {op}"));
+                progress.set(&format!("{}: benchmarking {op}", imp.name));
             } else if line == "verify: ok" {
-                progress.set("test vectors ok");
+                progress.set(&format!("{}: test vectors ok", imp.name));
             } else {
                 problems.push(line);
             }
@@ -334,42 +422,27 @@ fn bench(imp: &Impl, reports_dir: &Path, quick: bool) -> Result<Report, ()> {
     }
     let status = child.wait().map(|s| s.success()).unwrap_or(false);
 
-    let report = status
+    status
         .then(|| std::fs::read_to_string(&out).ok())
         .flatten()
-        .and_then(|text| serde_json::from_str::<Report>(&text).ok());
-    match report {
-        Some(report) => {
-            progress.finish(GOOD, "done");
-            Ok(report)
-        }
-        None => {
-            progress.finish(BAD, "FAILED");
-            for line in problems {
-                println!("      {BAD}{line}{BAD:#}");
-            }
-            Err(())
-        }
-    }
+        .and_then(|text| serde_json::from_str::<Report>(&text).ok())
+        .ok_or(problems)
 }
 
 fn print_table(reports: &[Report]) {
-    let median = |r: &Report, op: Op| {
-        r.results
-            .iter()
-            .find(|m| m.op == op)
-            .map(|m| (m.median_ns, m.mib_per_s))
-    };
+    fn find(r: &Report, op: Op) -> Option<&schema::Measurement> {
+        r.results.iter().find(|m| m.op == op)
+    }
     let mut rows = reports.iter().collect::<Vec<_>>();
     rows.sort_by(|a, b| {
-        let key = |r: &Report| median(r, Op::Seal).map_or(f64::INFINITY, |m| m.0);
+        let key = |r: &Report| find(r, Op::Seal).map_or(f64::INFINITY, |m| m.median_ns);
         key(a).total_cmp(&key(b))
     });
     let best = |op: Op| {
         reports
             .iter()
-            .filter_map(|r| median(r, op))
-            .map(|m| m.0)
+            .filter_map(|r| find(r, op))
+            .map(|m| m.median_ns)
             .fold(f64::INFINITY, f64::min)
     };
     let width = reports
@@ -379,23 +452,28 @@ fn print_table(reports: &[Report]) {
         .unwrap_or(0)
         .max(14);
 
-    ui::heading("Results (median per 1280-byte message, fastest first)");
+    ui::heading("Results (median of the round medians per 1280-byte message, fastest first)");
     println!(
-        "  {BOLD}{:<width$}  {:>24}  {:>24}{BOLD:#}",
+        "  {BOLD}{:<width$}  {:>32}  {:>32}{BOLD:#}",
         "implementation", "seal", "open"
     );
     for r in rows {
-        let cell = |op: Op| match median(r, op) {
-            Some((ns, mib)) => {
-                let text = format!("{:>9} {:>8} MiB/s", ui::duration_ns(ns), ui::thousands(mib));
-                let style = if ns <= best(op) {
+        let cell = |op: Op| match find(r, op) {
+            Some(m) => {
+                let text = format!(
+                    "{:>9} {:>8} MiB/s",
+                    ui::duration_ns(m.median_ns),
+                    ui::thousands(m.mib_per_s)
+                );
+                let style = if m.median_ns <= best(op) {
                     BEST
                 } else {
                     anstyle::Style::new()
                 };
-                format!("{style}{text:>24}{style:#}")
+                let spread = m.spread_pct.map_or(String::new(), |s| format!("±{s:.1}%"));
+                format!("{style}{text:>24}{style:#} {DIM}{spread:>7}{DIM:#}")
             }
-            None => format!("{:>24}", "-"),
+            None => format!("{:>32}", "-"),
         };
         println!(
             "  {:<width$}  {}  {}",
@@ -404,6 +482,7 @@ fn print_table(reports: &[Report]) {
             cell(Op::Open)
         );
     }
+    println!("  {DIM}± is half the range of the per-round medians, relative to the median{DIM:#}");
 }
 
 fn save(run: &RunFile, dir: &Path) -> std::io::Result<PathBuf> {

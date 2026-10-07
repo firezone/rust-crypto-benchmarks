@@ -5,7 +5,9 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
-pub const SCHEMA_VERSION: u32 = 1;
+/// Version 2 added interleaved rounds (`meta.rounds`, `round_medians_ns`, `spread_pct`) and
+/// `meta.placement`. Version 1 files remain valid.
+pub const SCHEMA_VERSION: u32 = 2;
 pub const SIZE: u64 = 1280;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -34,6 +36,32 @@ pub struct Meta {
     pub quick: bool,
     /// Absent for runs made before the preflight checks existed.
     pub preflight: Option<Preflight>,
+    /// Where the benchmark processes ran; absent before version 2 and on unsupported systems.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub placement: Option<Placement>,
+    /// How many interleaved rounds every implementation was measured in (version 2).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rounds: Option<u32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Placement {
+    pub method: PlacementMethod,
+    /// The logical CPU every benchmark process was pinned to.
+    pub cpu: Option<u32>,
+    pub cpu_max_mhz: Option<u32>,
+    /// Windows' ranking of core types: higher is more performant.
+    pub efficiency_class: Option<u8>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PlacementMethod {
+    /// Pinned to one logical CPU (Linux, Windows).
+    Affinity,
+    /// Highest thread QoS class, which prefers performance cores (macOS).
+    Qos,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -94,13 +122,22 @@ pub struct Config {
 pub struct Measurement {
     pub op: Op,
     pub size: u64,
+    /// In a run file of version 2 and later: the median of `round_medians_ns`, with `q1_ns` and
+    /// `q3_ns` its quartiles. Otherwise, statistics over the samples of a single measurement.
     pub median_ns: f64,
     pub q1_ns: f64,
     pub q3_ns: f64,
     pub min_ns: f64,
     pub mib_per_s: f64,
     pub samples: u32,
-    pub iters_per_sample: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub iters_per_sample: Option<u64>,
+    /// The median of each interleaved round, in the order the rounds ran.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub round_medians_ns: Option<Vec<f64>>,
+    /// Half the range of `round_medians_ns`, relative to `median_ns`: the "±" of the result.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub spread_pct: Option<f64>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -141,8 +178,8 @@ pub fn load(path: &Path) -> Result<RunFile, String> {
 
 fn check(run: &RunFile) -> Result<(), String> {
     let mut problems = Vec::new();
-    if run.schema != SCHEMA_VERSION {
-        problems.push(format!("schema must be {SCHEMA_VERSION}"));
+    if !(1..=SCHEMA_VERSION).contains(&run.schema) {
+        problems.push(format!("schema must be between 1 and {SCHEMA_VERSION}"));
     }
     if !is_label(&run.machine) {
         problems.push(
@@ -178,6 +215,21 @@ fn check(run: &RunFile) -> Result<(), String> {
         for m in &report.results {
             if m.size != SIZE {
                 problems.push(format!("{name} {}: size must be {SIZE}", m.op.title()));
+            }
+            if run.schema >= 2 {
+                let rounds = m.round_medians_ns.as_deref().unwrap_or_default();
+                if rounds.is_empty() || m.spread_pct.is_none_or(|s| !s.is_finite() || s < 0.0) {
+                    problems.push(format!(
+                        "{name} {}: round_medians_ns and spread_pct are required",
+                        m.op.title()
+                    ));
+                }
+                if rounds.iter().any(|t| !t.is_finite() || *t <= 0.0) {
+                    problems.push(format!(
+                        "{name} {}: round medians must be positive",
+                        m.op.title()
+                    ));
+                }
             }
             let timings = [m.median_ns, m.q1_ns, m.q3_ns, m.min_ns, m.mib_per_s];
             if !timings.iter().all(|t| t.is_finite() && *t > 0.0) {

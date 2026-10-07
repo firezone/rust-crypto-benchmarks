@@ -35,7 +35,7 @@ pub fn power() -> (Power, Vec<Finding>) {
     } else if cfg!(target_os = "linux") {
         linux_power()
     } else {
-        Power::default()
+        windows_power()
     };
 
     let mut findings = Vec::new();
@@ -56,12 +56,20 @@ pub fn power() -> (Power, Vec<Finding>) {
     }
     if let Some(on) = power.low_power_mode {
         findings.push(Finding {
-            name: "low power mode",
+            name: if cfg!(windows) {
+                "battery saver"
+            } else {
+                "low power mode"
+            },
             value: if on { "on" } else { "off" }.to_owned(),
             verdict: if on { Verdict::Fail } else { Verdict::Pass },
             advice: on.then(|| {
-                "Low Power Mode throttles the CPU: turn it off in System Settings > Battery"
-                    .to_owned()
+                if cfg!(windows) {
+                    "battery saver throttles the CPU: turn it off in Settings > System > Power & battery"
+                } else {
+                    "Low Power Mode throttles the CPU: turn it off in System Settings > Battery"
+                }
+                .to_owned()
             }),
         });
     }
@@ -212,4 +220,31 @@ fn linux_power() -> Power {
         profile,
         governor,
     }
+}
+
+#[cfg(windows)]
+fn windows_power() -> Power {
+    use windows_sys::Win32::System::Power::{GetSystemPowerStatus, SYSTEM_POWER_STATUS};
+
+    let mut status = SYSTEM_POWER_STATUS::default();
+    // SAFETY: `status` is a valid, writable SYSTEM_POWER_STATUS.
+    if unsafe { GetSystemPowerStatus(&mut status) } == 0 {
+        return Power::default();
+    }
+    Power {
+        source: match status.ACLineStatus {
+            0 => Some(PowerSource::Battery),
+            1 => Some(PowerSource::Ac),
+            _ => None,
+        },
+        // 1 means battery saver is on.
+        low_power_mode: Some(status.SystemStatusFlag == 1),
+        profile: None,
+        governor: None,
+    }
+}
+
+#[cfg(not(windows))]
+fn windows_power() -> Power {
+    Power::default()
 }

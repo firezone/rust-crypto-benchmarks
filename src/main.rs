@@ -2,8 +2,10 @@
 //! maintains the results the website is built from.
 
 mod machine;
+mod placement;
 mod preflight;
 mod results;
+mod rounds;
 mod run;
 mod schema;
 mod ui;

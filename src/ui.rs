@@ -59,6 +59,8 @@ pub fn warning(text: &str) {
 pub struct Progress {
     bar: Option<ProgressBar>,
     prefix: String,
+    /// Whether plain output prints every update or only the final line.
+    plain_updates: bool,
 }
 
 impl Progress {
@@ -75,13 +77,23 @@ impl Progress {
         Self {
             bar,
             prefix: prefix.to_owned(),
+            plain_updates: true,
+        }
+    }
+
+    /// Like [`Progress::new`], but plain output only shows the final line.
+    pub fn quiet(prefix: &str) -> Self {
+        Self {
+            plain_updates: false,
+            ..Self::new(prefix)
         }
     }
 
     pub fn set(&self, message: &str) {
         match &self.bar {
             Some(bar) => bar.set_message(message.to_owned()),
-            None => println!("  {BOLD}{}{BOLD:#} {message}", self.prefix),
+            None if self.plain_updates => println!("  {BOLD}{}{BOLD:#} {message}", self.prefix),
+            None => {}
         }
     }
 

@@ -290,9 +290,11 @@ dependencies = [
  "anstyle",
  "clap",
  "indicatif",
+ "libc",
  "serde",
  "serde_json",
  "sysinfo",
+ "windows-sys",
 ]
 
 [[package]]
