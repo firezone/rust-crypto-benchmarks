@@ -13,6 +13,7 @@ mod vectors;
 use std::hint::black_box;
 use std::path::PathBuf;
 use std::process::ExitCode;
+use std::time::Duration;
 
 pub use measure::Config;
 
@@ -76,23 +77,39 @@ pub struct Measurement {
 
 /// Verifies `T`, then benchmarks it and writes the JSON report.
 ///
-/// Arguments: `--out <path>` (default: print JSON to stdout), `--quick`, `--verify-only`.
+/// Arguments: `--out <path>` (default: print JSON to stdout), `--quick`, `--verify-only`, and
+/// `--warmup-ms`, `--samples` and `--sample-ms` to override the measurement budget.
 pub fn run<T: ChaCha20Poly1305>(library: &'static str, manifest: Manifest) -> ExitCode {
     let mut out = None::<PathBuf>;
-    let mut quick = false;
+    let mut config = Config::full();
     let mut verify_only = false;
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
+        let mut number = || {
+            args.next()
+                .and_then(|v| v.parse::<u64>().ok())
+                .filter(|n| *n > 0)
+        };
         match arg.as_str() {
             "--out" => out = args.next().map(PathBuf::from),
-            "--quick" => quick = true,
+            "--quick" => config = Config::quick(),
             "--verify-only" => verify_only = true,
-            other => {
-                eprintln!("unknown argument: {other}");
-                return ExitCode::FAILURE;
-            }
+            "--warmup-ms" => match number() {
+                Some(ms) => config.warmup = Duration::from_millis(ms),
+                None => return usage(&arg),
+            },
+            "--samples" => match number() {
+                Some(n) => config.samples = n as usize,
+                None => return usage(&arg),
+            },
+            "--sample-ms" => match number() {
+                Some(ms) => config.sample_time = Duration::from_millis(ms),
+                None => return usage(&arg),
+            },
+            other => return usage(other),
         }
     }
+    prefer_fast_cores();
 
     if let Err(e) = vectors::chacha20poly1305::<T>() {
         eprintln!("verify: FAILED: {e}");
@@ -103,11 +120,6 @@ pub fn run<T: ChaCha20Poly1305>(library: &'static str, manifest: Manifest) -> Ex
         return ExitCode::SUCCESS;
     }
 
-    let config = if quick {
-        Config::quick()
-    } else {
-        Config::full()
-    };
     let cipher = T::new(&[0x42; 32]);
     let nonce = [0u8; 12];
     let plaintext = input(SIZE);
@@ -151,6 +163,27 @@ pub fn run<T: ChaCha20Poly1305>(library: &'static str, manifest: Manifest) -> Ex
         None => print!("{report}"),
     }
     ExitCode::SUCCESS
+}
+
+fn usage(arg: &str) -> ExitCode {
+    eprintln!("invalid argument: {arg}");
+    ExitCode::FAILURE
+}
+
+/// macOS has no CPU affinity, but the highest QoS class keeps a thread on the performance cores.
+/// Elsewhere the runner pins the process to a core.
+fn prefer_fast_cores() {
+    #[cfg(target_vendor = "apple")]
+    {
+        const QOS_CLASS_USER_INTERACTIVE: u32 = 0x21;
+        unsafe extern "C" {
+            fn pthread_set_qos_class_self_np(qos_class: u32, relative_priority: i32) -> i32;
+        }
+        // SAFETY: Only changes the scheduling class of the calling thread.
+        if unsafe { pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0) } != 0 {
+            eprintln!("warning: could not raise the thread's QoS class");
+        }
+    }
 }
 
 /// A message of `len` bytes followed by room for the tag.
