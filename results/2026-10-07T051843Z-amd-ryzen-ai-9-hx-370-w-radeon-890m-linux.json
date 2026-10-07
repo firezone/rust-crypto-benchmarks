@@ -1,0 +1,267 @@
+{
+  "schema": 1,
+  "machine": "amd-ryzen-ai-9-hx-370-w-radeon-890m-linux",
+  "meta": {
+    "date": "2026-10-07T05:18:43Z",
+    "arch": "x86_64",
+    "os": "linux",
+    "cpu": "AMD Ryzen AI 9 HX 370 w/ Radeon 890M",
+    "cpu_count": 24,
+    "cpu_features": [
+      "ssse3",
+      "avx",
+      "avx2",
+      "avx512f",
+      "avx512vl"
+    ],
+    "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+    "commit": null,
+    "quick": false,
+    "preflight": {
+      "cpu_busy_pct": 4.8,
+      "power": {
+        "source": "battery",
+        "low_power_mode": null,
+        "profile": "performance",
+        "governor": "performance"
+      },
+      "forced": []
+    }
+  },
+  "implementations": [
+    {
+      "impl": "aws-lc-rs-1.18",
+      "library": "aws-lc-rs",
+      "crates": [
+        {
+          "name": "aws-lc-rs",
+          "version": "1.18.1"
+        }
+      ],
+      "config": {
+        "samples": 101,
+        "sample_time_ms": 20,
+        "warmup_ms": 500
+      },
+      "results": [
+        {
+          "op": "seal",
+          "size": 1280,
+          "median_ns": 575.604,
+          "q1_ns": 533.52,
+          "q3_ns": 668.369,
+          "min_ns": 527.1,
+          "mib_per_s": 2120.74,
+          "samples": 101,
+          "iters_per_sample": 33431
+        },
+        {
+          "op": "open",
+          "size": 1280,
+          "median_ns": 914.029,
+          "q1_ns": 662.232,
+          "q3_ns": 1363.774,
+          "min_ns": 593.393,
+          "mib_per_s": 1335.52,
+          "samples": 101,
+          "iters_per_sample": 26921
+        }
+      ]
+    },
+    {
+      "impl": "graviola-0.4",
+      "library": "graviola",
+      "crates": [
+        {
+          "name": "graviola",
+          "version": "0.4.1"
+        }
+      ],
+      "config": {
+        "samples": 101,
+        "sample_time_ms": 20,
+        "warmup_ms": 500
+      },
+      "results": [
+        {
+          "op": "seal",
+          "size": 1280,
+          "median_ns": 3135.383,
+          "q1_ns": 2677.303,
+          "q3_ns": 3689.917,
+          "min_ns": 1788.635,
+          "mib_per_s": 389.33,
+          "samples": 101,
+          "iters_per_sample": 10297
+        },
+        {
+          "op": "open",
+          "size": 1280,
+          "median_ns": 2411.677,
+          "q1_ns": 2163.52,
+          "q3_ns": 3131.501,
+          "min_ns": 1930.323,
+          "mib_per_s": 506.16,
+          "samples": 101,
+          "iters_per_sample": 6404
+        }
+      ]
+    },
+    {
+      "impl": "libcrux-0.0.9",
+      "library": "libcrux",
+      "crates": [
+        {
+          "name": "libcrux-chacha20poly1305",
+          "version": "0.0.9"
+        }
+      ],
+      "config": {
+        "samples": 101,
+        "sample_time_ms": 20,
+        "warmup_ms": 500
+      },
+      "results": [
+        {
+          "op": "seal",
+          "size": 1280,
+          "median_ns": 4298.323,
+          "q1_ns": 4111.39,
+          "q3_ns": 5569.753,
+          "min_ns": 3312.107,
+          "mib_per_s": 284.0,
+          "samples": 101,
+          "iters_per_sample": 5307
+        },
+        {
+          "op": "open",
+          "size": 1280,
+          "median_ns": 3341.115,
+          "q1_ns": 3000.355,
+          "q3_ns": 3972.134,
+          "min_ns": 2593.902,
+          "mib_per_s": 365.36,
+          "samples": 101,
+          "iters_per_sample": 6090
+        }
+      ]
+    },
+    {
+      "impl": "ring-0.17",
+      "library": "ring",
+      "crates": [
+        {
+          "name": "ring",
+          "version": "0.17.14"
+        }
+      ],
+      "config": {
+        "samples": 101,
+        "sample_time_ms": 20,
+        "warmup_ms": 500
+      },
+      "results": [
+        {
+          "op": "seal",
+          "size": 1280,
+          "median_ns": 1392.934,
+          "q1_ns": 1230.522,
+          "q3_ns": 1695.622,
+          "min_ns": 995.3,
+          "mib_per_s": 876.35,
+          "samples": 101,
+          "iters_per_sample": 22804
+        },
+        {
+          "op": "open",
+          "size": 1280,
+          "median_ns": 1456.76,
+          "q1_ns": 1311.636,
+          "q3_ns": 1575.286,
+          "min_ns": 1141.001,
+          "mib_per_s": 837.96,
+          "samples": 101,
+          "iters_per_sample": 15669
+        }
+      ]
+    },
+    {
+      "impl": "rustcrypto-0.10",
+      "library": "RustCrypto",
+      "crates": [
+        {
+          "name": "chacha20poly1305",
+          "version": "0.10.1"
+        }
+      ],
+      "config": {
+        "samples": 101,
+        "sample_time_ms": 20,
+        "warmup_ms": 500
+      },
+      "results": [
+        {
+          "op": "seal",
+          "size": 1280,
+          "median_ns": 4126.973,
+          "q1_ns": 3321.213,
+          "q3_ns": 4602.585,
+          "min_ns": 3014.836,
+          "mib_per_s": 295.79,
+          "samples": 101,
+          "iters_per_sample": 4750
+        },
+        {
+          "op": "open",
+          "size": 1280,
+          "median_ns": 2033.966,
+          "q1_ns": 1756.895,
+          "q3_ns": 2610.174,
+          "min_ns": 1746.542,
+          "mib_per_s": 600.16,
+          "samples": 101,
+          "iters_per_sample": 7726
+        }
+      ]
+    },
+    {
+      "impl": "rustcrypto-0.11",
+      "library": "RustCrypto",
+      "crates": [
+        {
+          "name": "chacha20poly1305",
+          "version": "0.11.0"
+        }
+      ],
+      "config": {
+        "samples": 101,
+        "sample_time_ms": 20,
+        "warmup_ms": 500
+      },
+      "results": [
+        {
+          "op": "seal",
+          "size": 1280,
+          "median_ns": 1769.332,
+          "q1_ns": 1763.499,
+          "q3_ns": 1801.077,
+          "min_ns": 1752.978,
+          "mib_per_s": 689.92,
+          "samples": 101,
+          "iters_per_sample": 11329
+        },
+        {
+          "op": "open",
+          "size": 1280,
+          "median_ns": 1732.773,
+          "q1_ns": 1728.837,
+          "q3_ns": 1738.321,
+          "min_ns": 1722.733,
+          "mib_per_s": 704.48,
+          "samples": 101,
+          "iters_per_sample": 11554
+        }
+      ]
+    }
+  ]
+}
