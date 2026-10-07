@@ -34,8 +34,8 @@ pub struct Stats {
 }
 
 impl Stats {
-    pub fn mib_per_s(&self, size: usize) -> Option<f64> {
-        (size > 0).then(|| size as f64 / (self.median_ns * 1e-9) / (1024.0 * 1024.0))
+    pub fn mib_per_s(&self, size: usize) -> f64 {
+        size as f64 / (self.median_ns * 1e-9) / (1024.0 * 1024.0)
     }
 }
 

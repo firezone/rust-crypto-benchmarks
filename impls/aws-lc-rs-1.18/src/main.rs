@@ -1,9 +1,6 @@
-//! `aws-lc-rs` exposes neither BLAKE2s nor XChaCha20-Poly1305.
-
 use std::process::ExitCode;
 
 use aws_lc_rs::aead::{Aad, CHACHA20_POLY1305, LessSafeKey, Nonce, UnboundKey};
-use aws_lc_rs::agreement::{self, PrivateKey, UnparsedPublicKey};
 use harness::{OpenError, TAG_LEN};
 
 struct ChaCha20Poly1305(LessSafeKey);
@@ -37,22 +34,6 @@ impl harness::ChaCha20Poly1305 for ChaCha20Poly1305 {
     }
 }
 
-struct X25519(PrivateKey);
-
-impl harness::X25519 for X25519 {
-    fn new(secret: &[u8; 32]) -> Self {
-        Self(PrivateKey::from_private_key(&agreement::X25519, secret).unwrap())
-    }
-
-    fn diffie_hellman(&self, public: &[u8; 32]) -> [u8; 32] {
-        let public = UnparsedPublicKey::new(&agreement::X25519, public);
-        agreement::agree(&self.0, public, (), |k| Ok(k.try_into().unwrap())).unwrap()
-    }
-}
-
 fn main() -> ExitCode {
-    harness::Suite::new("aws-lc-rs", harness::manifest!())
-        .chacha20poly1305::<ChaCha20Poly1305>()
-        .x25519::<X25519>()
-        .run()
+    harness::run::<ChaCha20Poly1305>("aws-lc-rs", harness::manifest!())
 }

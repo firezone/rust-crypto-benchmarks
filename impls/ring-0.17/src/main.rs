@@ -1,7 +1,3 @@
-//! `ring` has no BLAKE2s or XChaCha20-Poly1305, and its X25519 only accepts ephemeral,
-//! randomly generated secrets, so it can neither be fed a static key nor checked against
-//! the RFC 7748 vectors.
-
 use std::process::ExitCode;
 
 use harness::{OpenError, TAG_LEN};
@@ -39,7 +35,5 @@ impl harness::ChaCha20Poly1305 for ChaCha20Poly1305 {
 }
 
 fn main() -> ExitCode {
-    harness::Suite::new("ring", harness::manifest!())
-        .chacha20poly1305::<ChaCha20Poly1305>()
-        .run()
+    harness::run::<ChaCha20Poly1305>("ring", harness::manifest!())
 }

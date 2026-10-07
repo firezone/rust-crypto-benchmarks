@@ -227,20 +227,7 @@ name = "libcrux-0_0_9"
 version = "0.0.0"
 dependencies = [
  "harness",
- "libcrux-blake2",
  "libcrux-chacha20poly1305",
- "libcrux-curve25519",
-]
-
-[[package]]
-name = "libcrux-blake2"
-version = "0.0.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e7b6646e12ff85ffa3e992e8999a51df1f1403868f94256e21ca7ece64cc0ed"
-dependencies = [
- "libcrux-hacl-rs",
- "libcrux-macros",
- "libcrux-traits",
 ]
 
 [[package]]
@@ -252,18 +239,6 @@ dependencies = [
  "libcrux-hacl-rs",
  "libcrux-macros",
  "libcrux-poly1305",
- "libcrux-secrets",
- "libcrux-traits",
-]
-
-[[package]]
-name = "libcrux-curve25519"
-version = "0.0.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e4f3cfd5e31cb9745e290ee061222c380ec42884654b09fc7d12a5b0ed63e028"
-dependencies = [
- "libcrux-hacl-rs",
- "libcrux-macros",
  "libcrux-secrets",
  "libcrux-traits",
 ]

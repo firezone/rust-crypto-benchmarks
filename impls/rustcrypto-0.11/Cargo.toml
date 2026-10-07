@@ -7,5 +7,3 @@ publish = false
 [dependencies]
 harness = { path = "../../harness" }
 chacha20poly1305 = "=0.11.0"
-x25519-dalek = { version = "=3.0.0", features = ["static_secrets"] }
-blake2 = "=0.11.0"

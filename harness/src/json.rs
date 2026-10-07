@@ -1,24 +1,14 @@
 use std::fmt::Write;
 
 use crate::measure::Config;
-use crate::meta::Meta;
-use crate::{Manifest, Measurement};
-
-pub const SCHEMA_VERSION: u32 = 1;
+use crate::{Manifest, Measurement, SIZE};
 
 pub fn report(
     library: &str,
     manifest: &Manifest,
-    meta: &Meta,
     config: &Config,
     measurements: &[Measurement],
 ) -> String {
-    let mut s = String::new();
-    s.push_str("{\n");
-    let _ = writeln!(s, "  \"schema\": {SCHEMA_VERSION},");
-    let _ = writeln!(s, "  \"impl\": {},", string(manifest.name()));
-    let _ = writeln!(s, "  \"library\": {},", string(library));
-
     let crates = direct_dependencies(manifest)
         .into_iter()
         .map(|(name, version)| {
@@ -29,54 +19,37 @@ pub fn report(
             )
         })
         .collect::<Vec<_>>();
-    let _ = writeln!(s, "  \"crates\": [{}],", crates.join(", "));
-
-    let features = meta
-        .cpu_features
-        .iter()
-        .map(|f| string(f))
-        .collect::<Vec<_>>();
-    s.push_str("  \"meta\": {\n");
-    let _ = writeln!(s, "    \"arch\": {},", string(meta.arch));
-    let _ = writeln!(s, "    \"os\": {},", string(meta.os));
-    let _ = writeln!(s, "    \"cpu\": {},", string(&meta.cpu));
-    let _ = writeln!(s, "    \"cpu_features\": [{}],", features.join(", "));
-    let _ = writeln!(s, "    \"rustc\": {},", string(meta.rustc));
-    let _ = writeln!(s, "    \"date\": {},", string(&meta.date));
-    let _ = writeln!(s, "    \"commit\": {},", string(&meta.commit));
-    let _ = writeln!(s, "    \"quick\": {},", meta.quick);
-    let _ = writeln!(
-        s,
-        "    \"samples\": {}, \"sample_time_ms\": {}, \"warmup_ms\": {}",
-        config.samples,
-        config.sample_time.as_millis(),
-        config.warmup.as_millis()
-    );
-    s.push_str("  },\n");
-
-    s.push_str("  \"results\": [\n");
-    let rows = measurements
+    let results = measurements
         .iter()
         .map(|m| {
             let st = &m.stats;
-            let throughput = st
-                .mib_per_s(m.size)
-                .map_or("null".to_owned(), |t| format!("{t:.2}"));
             format!(
-                "    {{ \"op\": {}, \"size\": {}, \"median_ns\": {:.3}, \"q1_ns\": {:.3}, \"q3_ns\": {:.3}, \"min_ns\": {:.3}, \"mib_per_s\": {throughput}, \"samples\": {}, \"iters_per_sample\": {} }}",
+                "    {{ \"op\": {}, \"size\": {SIZE}, \"median_ns\": {:.3}, \"q1_ns\": {:.3}, \"q3_ns\": {:.3}, \"min_ns\": {:.3}, \"mib_per_s\": {:.2}, \"samples\": {}, \"iters_per_sample\": {} }}",
                 string(m.op),
-                m.size,
                 st.median_ns,
                 st.q1_ns,
                 st.q3_ns,
                 st.min_ns,
+                st.mib_per_s(SIZE),
                 st.samples,
                 st.iters_per_sample
             )
         })
         .collect::<Vec<_>>();
-    s.push_str(&rows.join(",\n"));
-    s.push_str("\n  ]\n}\n");
+
+    let mut s = String::from("{\n");
+    let _ = writeln!(s, "  \"impl\": {},", string(manifest.name()));
+    let _ = writeln!(s, "  \"library\": {},", string(library));
+    let _ = writeln!(s, "  \"crates\": [{}],", crates.join(", "));
+    let _ = writeln!(
+        s,
+        "  \"config\": {{ \"samples\": {}, \"sample_time_ms\": {}, \"warmup_ms\": {} }},",
+        config.samples,
+        config.sample_time.as_millis(),
+        config.warmup.as_millis()
+    );
+    let _ = writeln!(s, "  \"results\": [\n{}\n  ]", results.join(",\n"));
+    s.push_str("}\n");
     s
 }
 
