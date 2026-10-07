@@ -461,9 +461,9 @@ fn print_table(reports: &[Report]) {
         let cell = |op: Op| match find(r, op) {
             Some(m) => {
                 let text = format!(
-                    "{:>9} {:>8} MiB/s",
+                    "{:>9} {:>6.1} Gbit/s",
                     ui::duration_ns(m.median_ns),
-                    ui::thousands(m.mib_per_s)
+                    m.mib_per_s * 1024.0 * 1024.0 * 8.0 / 1e9
                 );
                 let style = if m.median_ns <= best(op) {
                     BEST

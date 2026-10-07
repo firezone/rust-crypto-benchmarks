@@ -29,7 +29,7 @@ function formatTime(ns) {
   return `${fmt(ns, 0)} ns`;
 }
 
-const formatRate = (mib) => `${fmt(mib, mib >= 100 ? 0 : 1)} MiB/s`;
+const formatRate = (mib) => `${fmt((mib * 1024 * 1024 * 8) / 1e9, 1)} Gbit/s`;
 const formatDate = (iso) => iso.replace("T", " ").replace(/:\d\dZ$/, " UTC");
 
 // Runs on the same hardware belong together, whatever label they were submitted under.
