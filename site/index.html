@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Rust crypto benchmarks</title>
+    <meta
+      name="description"
+      content="ChaCha20-Poly1305, XChaCha20-Poly1305, X25519 and BLAKE2s across Rust crypto libraries, measured on the primitives WireGuard needs."
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="page-header">
+      <h1>Rust crypto benchmarks</h1>
+      <p class="lede">
+        The primitives a WireGuard implementation needs, compared across Rust crypto libraries.
+        Every implementation is checked against published test vectors before it is timed.
+        Source and method:
+        <a href="https://github.com/firezone/rust-crypto-benchmarks">firezone/rust-crypto-benchmarks</a>.
+      </p>
+    </header>
+
+    <main>
+      <div id="controls" class="controls" hidden>
+        <div class="arch-picker" role="group" aria-label="Architecture"></div>
+      </div>
+      <section id="meta" class="meta" aria-label="Run details"></section>
+      <nav id="toc" class="toc" aria-label="Operations"></nav>
+      <div id="content"><p class="status">Loading results…</p></div>
+    </main>
+
+    <footer class="page-footer">
+      <p>
+        Median time per operation over many timed batches; the range is the interquartile range.
+        Throughput is message bytes per second at the median. Each AEAD iteration includes copying a
+        fresh message into the working buffer.
+      </p>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>
