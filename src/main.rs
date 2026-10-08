@@ -51,6 +51,9 @@ enum Command {
         /// Files or directories [default: results]
         paths: Vec<PathBuf>,
     },
+
+    /// Print the names of the implementations under impls/ as a JSON array
+    List,
 }
 
 fn main() -> ExitCode {
@@ -67,5 +70,6 @@ fn main() -> ExitCode {
         Some(Command::Run(args)) => run::run(args),
         Some(Command::Merge { results, out }) => results::merge(&results, &out),
         Some(Command::Validate { paths }) => results::validate(&paths),
+        Some(Command::List) => run::list(),
     }
 }
