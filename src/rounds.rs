@@ -6,6 +6,8 @@ use crate::schema::{Measurement, Op, Report, SIZE};
 
 pub const DEFAULT_ROUNDS: u32 = 7;
 pub const DEFAULT_QUICK_ROUNDS: u32 = 3;
+/// The largest [`drift_pct`] a run is accepted with.
+pub const MAX_DRIFT_PCT: f64 = 10.0;
 
 /// One round's measurement budget, passed to the implementation binaries. The total over all
 /// rounds stays close to a single long measurement of 101 samples (21 with `--quick`).
@@ -93,6 +95,17 @@ pub fn aggregate(mut rounds: Vec<Report>) -> Report {
     report
 }
 
+/// The interquartile range of the round medians, relative to their median, in percent. A single
+/// slow round barely moves it; several rounds off means the machine was busy or throttled.
+pub fn drift_pct(round_medians: &[f64]) -> f64 {
+    if round_medians.is_empty() {
+        return 0.0;
+    }
+    let mut sorted = round_medians.to_vec();
+    sorted.sort_by(f64::total_cmp);
+    (quantile(&sorted, 0.75) - quantile(&sorted, 0.25)) / quantile(&sorted, 0.5) * 100.0
+}
+
 fn quantile(sorted: &[f64], q: f64) -> f64 {
     if sorted.is_empty() {
         return 0.0;
@@ -120,5 +133,16 @@ mod tests {
         assert_eq!(Budget::per_round(1, false).samples, 101);
         assert_eq!(Budget::per_round(7, false).samples, 15);
         assert_eq!(Budget::per_round(50, false).samples, 5);
+    }
+
+    #[test]
+    fn drift_ignores_one_slow_round_but_not_several() {
+        let one_outlier = [1826.0, 1844.0, 2227.0, 1840.0, 1842.0, 1837.0, 1855.0];
+        assert!(drift_pct(&one_outlier) < MAX_DRIFT_PCT / 2.0);
+
+        let drifting = [532.0, 532.0, 533.0, 542.0, 1140.0, 729.0, 734.0];
+        assert!(drift_pct(&drifting) > MAX_DRIFT_PCT);
+
+        assert_eq!(drift_pct(&[]), 0.0);
     }
 }

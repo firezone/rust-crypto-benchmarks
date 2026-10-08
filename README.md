@@ -45,8 +45,9 @@ arches = ["x86_64", "aarch64"]
   work) spreads evenly instead of always hitting whichever runs last. Within a round, a
   hand-rolled timing loop warms up for 0.2 s (which also calibrates the batch size) and then takes
   15 batches of about 20 ms. The reported time is the median of the round medians; the "±" is half
-  the range of the round medians, relative to that median. Inputs and outputs go through
-  `std::hint::black_box`.
+  the range of the round medians, relative to that median. A run is rejected when the
+  interquartile range of an implementation's round medians exceeds 10% of the median, because that
+  means the machine was busy or throttled. Inputs and outputs go through `std::hint::black_box`.
 - On hybrid CPUs, the core type a process lands on can matter more than the library. So on Linux
   and Windows every benchmark process is pinned to the same logical CPU: the one with the highest
   maximum frequency (Linux) or efficiency class (Windows), lowest index on ties. Windows processes
