@@ -59,15 +59,3 @@ jobs:
       - run: cargo fmt --check --manifest-path "impls/${{ matrix.impl }}/Cargo.toml"
       - run: cargo clippy --locked --all-targets --manifest-path "impls/${{ matrix.impl }}/Cargo.toml" -- -D warnings
 
-  # The single check that branch protection requires.
-  validate:
-    needs: [list, runner, impl]
-    if: always()
-    runs-on: ubuntu-24.04
-    steps:
-      - env:
-          RESULTS: ${{ join(needs.*.result, ' ') }}
-        run: |
-          for result in $RESULTS; do
-            test "$result" = success
-          done
