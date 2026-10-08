@@ -9,29 +9,65 @@ permissions:
   contents: read
 
 jobs:
-  check:
+  list:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      impls: ${{ steps.list.outputs.impls }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: rustup toolchain install
+      - id: list
+        run: echo "impls=$(cargo run --locked --quiet -- list)" >> "$GITHUB_OUTPUT"
+
+  runner:
     strategy:
       fail-fast: false
       matrix:
-        runner: [ubuntu-24.04, macos-latest, windows-latest]
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 30
+        os: [ubuntu-24.04, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     defaults:
       run:
         shell: bash
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: rustup toolchain install
-      - run: ./lint.sh
+      - run: cargo fmt --check
+      - run: cargo clippy --locked --all-targets -- -D warnings
+      - run: cargo fmt --check --manifest-path harness/Cargo.toml
+      - run: cargo clippy --locked --all-targets --manifest-path harness/Cargo.toml -- -D warnings
+      - run: cargo test --locked
       - run: cargo run --locked -- validate
       - run: node --check site/app.js
 
+  impl:
+    needs: list
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-latest, windows-latest]
+        impl: ${{ fromJSON(needs.list.outputs.impls) }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: rustup toolchain install
+      - run: cargo fmt --check --manifest-path "impls/${{ matrix.impl }}/Cargo.toml"
+      - run: cargo clippy --locked --all-targets --manifest-path "impls/${{ matrix.impl }}/Cargo.toml" -- -D warnings
+
   # The single check that branch protection requires.
   validate:
-    needs: check
+    needs: [list, runner, impl]
     if: always()
     runs-on: ubuntu-24.04
     steps:
       - env:
-          RESULT: ${{ needs.check.result }}
-        run: test "$RESULT" = success
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          for result in $RESULTS; do
+            test "$result" = success
+          done

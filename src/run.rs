@@ -268,6 +268,23 @@ fn refuse() -> ExitCode {
     ExitCode::FAILURE
 }
 
+pub fn list() -> ExitCode {
+    match discover(&[]) {
+        Ok(impls) => {
+            let names = impls.into_iter().map(|i| i.name).collect::<Vec<_>>();
+            println!(
+                "{}",
+                serde_json::to_string(&names).expect("strings serialize")
+            );
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            eprintln!("{e}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
 fn discover(only: &[String]) -> Result<Vec<Impl>, String> {
     let mut impls = std::fs::read_dir("impls")
         .map_err(|e| format!("impls/: {e}"))?
