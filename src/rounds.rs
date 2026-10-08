@@ -74,6 +74,11 @@ pub fn aggregate(mut rounds: Vec<Report>) -> Report {
                 return None;
             }
             let spread = (sorted[sorted.len() - 1] - sorted[0]) / 2.0 / median * 100.0;
+            let mut cycles = per_round
+                .iter()
+                .filter_map(|m| m.cycles_per_byte)
+                .collect::<Vec<_>>();
+            cycles.sort_by(f64::total_cmp);
             Some(Measurement {
                 op,
                 size: SIZE,
@@ -89,6 +94,7 @@ pub fn aggregate(mut rounds: Vec<Report>) -> Report {
                 iters_per_sample: None,
                 round_medians_ns: Some(medians),
                 spread_pct: Some((spread * 10.0).round() / 10.0),
+                cycles_per_byte: (!cycles.is_empty()).then(|| quantile(&cycles, 0.5)),
             })
         })
         .collect();

@@ -60,6 +60,13 @@ arches = ["x86_64", "aarch64"]
   first copies a fresh message into the working buffer, which costs the same for every
   implementation. libcrux only offers out-of-place encryption, so its adapter additionally copies
   the input to a scratch buffer, which is the cost an in-place caller would pay.
+- Where the CPU's cycle counter can be read without privileges, every batch also counts the cycles
+  it took, and the result includes cycles per byte: the figure crypto libraries quote, and the one
+  that compares across machines where nanoseconds do not. On Linux that is `perf_event_open`
+  counting user-mode cycles only, which needs `kernel.perf_event_paranoid` of 2 or lower and a
+  CPU that exposes its counters (most virtual machines do not). On Apple silicon it is
+  `proc_pid_rusage`, which counts the whole process. Windows and Intel Macs offer no such counter,
+  so there the figure is absent.
 - Before benchmarking, the runner records the power source, power profile or Low Power Mode,
   cpufreq governor and how busy the CPU is over 3 seconds. It refuses to run in a power-saving mode
   or above 10% CPU load unless given `--force`, in which case the run is flagged on the site.
