@@ -1,13 +1,7 @@
 # Rust crypto benchmarks
 
 How fast do Rust crypto libraries seal and open ChaCha20-Poly1305 messages the way WireGuard uses
-them? This compares them so we can choose what [sanstun](https://github.com/firezone/sanstun)
-should use instead of `ring`. Transport data dominates a tunnel's throughput, so that is all this
-measures: sealing and opening 1280-byte messages in place.
-
-Results from every machine are collected at <https://firezone.github.io/rust-crypto-benchmarks/>.
-CI adds runs from GitHub's Linux x86_64 and aarch64 and Windows x86_64 runners on every push to
-`main` and weekly.
+them?
 
 ## Submit results from your machine
 
@@ -25,32 +19,7 @@ are skipped.
    ```
 
 2. Commit the file it saved in `results/`. The last lines of its output show the exact commands.
-3. Push the commit to your fork and open a pull request. CI checks the file.
-
-`cargo run` refuses to measure a machine in a power-saving mode or one that is busy with other
-work: close heavy applications and plug in laptops first. Implementations that do not build on
-your machine (for example `aws-lc-rs` without a C toolchain) are skipped with a warning. The
-results file names your machine after its CPU and OS (never its hostname); pass `--machine LABEL`
-to choose another name. See `cargo run -- --help` for all options, such as `--cpu N` to pin the
-benchmarks to another core or `--rounds N`.
-
-## Layout
-
-```
-src/            the runner: `cargo run`, `cargo run -- merge`, `cargo run -- validate`
-harness/        the ChaCha20Poly1305 trait, test vectors, timing loop and per-implementation report
-impls/<name>/   one standalone crate per library and version, with its own Cargo.lock
-results/        one JSON file per run, from CI and from contributors
-site/           the static results page (no build step, no external dependencies)
-lint.sh         rustfmt, clippy and tests for every crate
-```
-
-The runner is the root package. Two semver-compatible versions of a crate cannot share a
-`Cargo.lock`, so the implementations are not part of its workspace: each is its own crate that
-depends on `harness` by path and pins its library with `=x.y.z`. The runner builds each one in
-release mode, runs it and collects its report into
-`results/<timestamp>-<machine>.json`. Each implementation is checked against RFC 8439 section 2.8.2
-and a 1280-byte known answer before it is timed; a mismatch fails the run.
+3. Push the commit to your fork and open a pull request.
 
 ## Adding a library or a new version
 
