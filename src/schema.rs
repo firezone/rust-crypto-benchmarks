@@ -98,6 +98,9 @@ pub struct Report {
     pub name: String,
     pub library: String,
     pub crates: Vec<Crate>,
+    /// How CPU cycles were counted, when `cycles_per_byte` is present.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cycle_counter: Option<String>,
     pub config: Config,
     pub results: Vec<Measurement>,
 }
@@ -138,6 +141,9 @@ pub struct Measurement {
     /// Half the range of `round_medians_ns`, relative to `median_ns`: the "±" of the result.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub spread_pct: Option<f64>,
+    /// The median CPU cycles per message byte, where a cycle counter was available.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cycles_per_byte: Option<f64>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -230,6 +236,14 @@ fn check(run: &RunFile) -> Result<(), String> {
                         m.op.title()
                     ));
                 }
+            }
+            if m.cycles_per_byte
+                .is_some_and(|c| !c.is_finite() || c <= 0.0)
+            {
+                problems.push(format!(
+                    "{name} {}: cycles_per_byte must be a positive number",
+                    m.op.title()
+                ));
             }
             let timings = [m.median_ns, m.q1_ns, m.q3_ns, m.min_ns, m.mib_per_s];
             if !timings.iter().all(|t| t.is_finite() && *t > 0.0) {

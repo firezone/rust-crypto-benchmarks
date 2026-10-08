@@ -163,6 +163,7 @@ pub fn run(args: RunArgs) -> ExitCode {
     let mut active = built.iter().collect::<Vec<_>>();
     let mut per_impl = (0..built.len()).map(|_| Vec::new()).collect::<Vec<_>>();
     let mut failed = Vec::new();
+    let mut cycles_note = None;
     for round in 0..rounds {
         let progress = Progress::quiet(&format!("round {}/{rounds}", round + 1));
         let mut dropped = Vec::new();
@@ -171,7 +172,14 @@ pub fn run(args: RunArgs) -> ExitCode {
                 .iter()
                 .position(|b| b.name == imp.name)
                 .expect("built");
-            match bench(imp, &reports_dir, &budget, placement.as_ref(), &progress) {
+            match bench(
+                imp,
+                &reports_dir,
+                &budget,
+                placement.as_ref(),
+                &progress,
+                &mut cycles_note,
+            ) {
                 Ok(report) => per_impl[index].push(report),
                 Err(problems) => {
                     println!("  {BAD}{} FAILED{BAD:#}", imp.name);
@@ -197,7 +205,7 @@ pub fn run(args: RunArgs) -> ExitCode {
         return ExitCode::FAILURE;
     }
 
-    print_table(&reports);
+    print_table(&reports, cycles_note.as_deref());
 
     let run = RunFile {
         schema: schema::SCHEMA_VERSION,
@@ -394,13 +402,15 @@ fn build_failure_reason(stderr: &[&str]) -> String {
         .collect()
 }
 
-/// Runs one implementation for one round.
+/// Runs one implementation for one round. `cycles_note` receives what the implementation says
+/// about its cycle counter.
 fn bench(
     imp: &Impl,
     reports_dir: &Path,
     budget: &Budget,
     placement: Option<&Placement>,
     progress: &Progress,
+    cycles_note: &mut Option<String>,
 ) -> Result<Report, Vec<String>> {
     progress.set(&format!("{}: verifying test vectors", imp.name));
     let out = reports_dir.join(format!("{}.json", imp.name));
@@ -432,6 +442,8 @@ fn bench(
                 progress.set(&format!("{}: benchmarking {op}", imp.name));
             } else if line == "verify: ok" {
                 progress.set(&format!("{}: test vectors ok", imp.name));
+            } else if let Some(note) = line.strip_prefix("cycles: ") {
+                *cycles_note = Some(note.to_owned());
             } else {
                 problems.push(line);
             }
@@ -446,7 +458,7 @@ fn bench(
         .ok_or(problems)
 }
 
-fn print_table(reports: &[Report]) {
+fn print_table(reports: &[Report], cycles_note: Option<&str>) {
     fn find(r: &Report, op: Op) -> Option<&schema::Measurement> {
         r.results.iter().find(|m| m.op == op)
     }
@@ -468,29 +480,40 @@ fn print_table(reports: &[Report]) {
         .max()
         .unwrap_or(0)
         .max(14);
+    let cycles = reports
+        .iter()
+        .any(|r| r.results.iter().any(|m| m.cycles_per_byte.is_some()));
+    let text_width = if cycles { 35 } else { 24 };
+    let cell_width = text_width + 8;
 
     ui::heading("Results (median of the round medians per 1280-byte message, fastest first)");
     println!(
-        "  {BOLD}{:<width$}  {:>32}  {:>32}{BOLD:#}",
+        "  {BOLD}{:<width$}  {:>cell_width$}  {:>cell_width$}{BOLD:#}",
         "implementation", "seal", "open"
     );
     for r in rows {
         let cell = |op: Op| match find(r, op) {
             Some(m) => {
-                let text = format!(
+                let mut text = format!(
                     "{:>9} {:>6.1} Gbit/s",
                     ui::duration_ns(m.median_ns),
                     m.mib_per_s * 1024.0 * 1024.0 * 8.0 / 1e9
                 );
+                if cycles {
+                    text.push_str(&match m.cycles_per_byte {
+                        Some(c) => format!(" {c:>6.2} c/B"),
+                        None => format!("{:>11}", "-"),
+                    });
+                }
                 let style = if m.median_ns <= best(op) {
                     BEST
                 } else {
                     anstyle::Style::new()
                 };
                 let spread = m.spread_pct.map_or(String::new(), |s| format!("±{s:.1}%"));
-                format!("{style}{text:>24}{style:#} {DIM}{spread:>7}{DIM:#}")
+                format!("{style}{text:>text_width$}{style:#} {DIM}{spread:>7}{DIM:#}")
             }
-            None => format!("{:>32}", "-"),
+            None => format!("{:>cell_width$}", "-"),
         };
         println!(
             "  {:<width$}  {}  {}",
@@ -500,6 +523,13 @@ fn print_table(reports: &[Report]) {
         );
     }
     println!("  {DIM}± is half the range of the per-round medians, relative to the median{DIM:#}");
+    match cycles_note {
+        Some(note) if cycles => {
+            println!("  {DIM}c/B is CPU cycles per byte, counted with {note}{DIM:#}")
+        }
+        Some(note) => println!("  {DIM}cycles per byte {note}{DIM:#}"),
+        None => {}
+    }
 }
 
 fn save(run: &RunFile, dir: &Path) -> std::io::Result<PathBuf> {

@@ -152,6 +152,9 @@ checksum = "e4eba85ea1d0a966a983acd07deee566e67395d2d96b6fb39e62b5a833f1eb0b"
 [[package]]
 name = "harness"
 version = "0.1.0"
+dependencies = [
+ "libc",
+]
 
 [[package]]
 name = "hax-lib"

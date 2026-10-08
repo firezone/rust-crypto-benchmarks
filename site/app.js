@@ -98,6 +98,7 @@ function renderMeta(run) {
     ["Power", power.length ? power.join(", ") : "not recorded"],
     ["Placement", describePlacement(m.placement)],
     ["Rounds", m.rounds ? `${m.rounds}, interleaved` : "1"],
+    ["Cycle counter", run.implementations.find((i) => i.cycle_counter)?.cycle_counter ?? "not available"],
   ];
   document
     .getElementById("meta")
@@ -120,6 +121,7 @@ function renderOp(run, op, colors) {
     .sort((a, b) => a.m.median_ns - b.m.median_ns);
   if (rows.length === 0) return null;
   const best = Math.max(...rows.map((r) => r.m.mib_per_s));
+  const cycles = rows.some((r) => r.m.cycles_per_byte != null);
 
   const body = rows.map(({ imp, m }) => {
     const width = (m.mib_per_s / best) * 100;
@@ -152,6 +154,7 @@ function renderOp(run, op, colors) {
         m.spread_pct != null ? `±${fmt(m.spread_pct, 1)}%` : "n/a",
       ),
       el("td", { class: "num" }, formatRate(m.mib_per_s)),
+      cycles ? el("td", { class: "num" }, m.cycles_per_byte != null ? fmt(m.cycles_per_byte, 2) : "n/a") : null,
       el("td", { class: "bar-cell", "aria-hidden": "true" }, bar()),
     );
   });
@@ -174,6 +177,7 @@ function renderOp(run, op, colors) {
           el("th", { scope: "col", class: "num" }, "Median"),
           el("th", { scope: "col", class: "num col-spread", title: "Half the range of the per-round medians, relative to the median" }, "Spread"),
           el("th", { scope: "col", class: "num" }, "Throughput"),
+          cycles ? el("th", { scope: "col", class: "num", title: "CPU cycles per message byte, from the hardware cycle counter" }, "Cycles/byte") : null,
           el("th", { scope: "col", class: "bar-cell" }, el("span", { class: "visually-hidden" }, "Relative")),
         ),
       ),

@@ -4,8 +4,10 @@
 //! which checks the implementation against known-answer vectors before benchmarking it.
 //!
 //! Progress goes to stderr, one event per line, which the runner turns into its status display:
-//! `verify: ok`, `verify: FAILED: <reason>` and `bench <op>`.
+//! `verify: ok`, `verify: FAILED: <reason>`, `cycles: <counter>` or `cycles: unavailable:
+//! <reason>`, and `bench <op>`.
 
+mod cycles;
 mod json;
 mod measure;
 mod vectors;
@@ -120,6 +122,17 @@ pub fn run<T: ChaCha20Poly1305>(library: &'static str, manifest: Manifest) -> Ex
         return ExitCode::SUCCESS;
     }
 
+    let counter = match cycles::Counter::open() {
+        Ok(counter) => {
+            eprintln!("cycles: {}", cycles::Counter::METHOD);
+            Some(counter)
+        }
+        Err(e) => {
+            eprintln!("cycles: unavailable: {e}");
+            None
+        }
+    };
+
     let cipher = T::new(&[0x42; 32]);
     let nonce = [0u8; 12];
     let plaintext = input(SIZE);
@@ -131,12 +144,12 @@ pub fn run<T: ChaCha20Poly1305>(library: &'static str, manifest: Manifest) -> Ex
     // valid ciphertext each time; sealing does it too so both directions carry the same (small,
     // implementation-independent) overhead.
     eprintln!("bench seal");
-    let seal = measure::run(&config, || {
+    let seal = measure::run(&config, counter.as_ref(), || {
         buf.copy_from_slice(black_box(&plaintext));
         cipher.seal_in_place(black_box(&nonce), black_box(&[]), black_box(&mut buf));
     });
     eprintln!("bench open");
-    let open = measure::run(&config, || {
+    let open = measure::run(&config, counter.as_ref(), || {
         buf.copy_from_slice(black_box(&sealed));
         let res = cipher.open_in_place(black_box(&nonce), black_box(&[]), black_box(&mut buf));
         assert!(res.is_ok());
@@ -152,7 +165,8 @@ pub fn run<T: ChaCha20Poly1305>(library: &'static str, manifest: Manifest) -> Ex
             stats: open,
         },
     ];
-    let report = json::report(library, &manifest, &config, &measurements);
+    let cycle_counter = counter.is_some().then_some(cycles::Counter::METHOD);
+    let report = json::report(library, &manifest, &config, cycle_counter, &measurements);
     match out {
         Some(path) => {
             if let Err(e) = std::fs::write(&path, report) {

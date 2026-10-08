@@ -111,6 +111,9 @@ dependencies = [
 [[package]]
 name = "harness"
 version = "0.1.0"
+dependencies = [
+ "libc",
+]
 
 [[package]]
 name = "hybrid-array"
