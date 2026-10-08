@@ -31,8 +31,15 @@ pub struct Meta {
     pub cpu_count: Option<u32>,
     pub cpu_features: Vec<String>,
     pub rustc: String,
-    /// The repository commit the run was made from, only known in CI.
+    /// The first line of the C compiler's version banner, which `ring` and `aws-lc-rs` are built
+    /// with; absent when none was found.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub c_compiler: Option<String>,
+    /// The repository commit the run was made from; absent when git was unavailable.
     pub commit: Option<String>,
+    /// Whether tracked files differed from `commit`; absent when git was unavailable.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dirty: Option<bool>,
     pub quick: bool,
     /// Absent for runs made before the preflight checks existed.
     pub preflight: Option<Preflight>,

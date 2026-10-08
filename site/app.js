@@ -87,12 +87,16 @@ function renderMeta(run) {
     ["System", `${m.os} ${m.arch}`],
     ["CPU features", (m.cpu_features || []).join(" ") || "none detected"],
     ["Compiler", m.rustc],
+    ["C compiler", m.c_compiler || "not recorded"],
     ["Date", formatDate(m.date)],
     [
       "Commit",
       m.commit
-        ? el("a", { href: `https://github.com/firezone/rust-crypto-benchmarks/commit/${m.commit}` }, m.commit.slice(0, 10))
-        : "not recorded (local run)",
+        ? [
+            el("a", { href: `https://github.com/firezone/rust-crypto-benchmarks/commit/${m.commit}` }, m.commit.slice(0, 10)),
+            m.dirty ? " (dirty working tree)" : null,
+          ]
+        : "not recorded",
     ],
     ["CPU busy before run", p && p.cpu_busy_pct != null ? `${fmt(p.cpu_busy_pct, 1)}%` : "not recorded"],
     ["Power", power.length ? power.join(", ") : "not recorded"],

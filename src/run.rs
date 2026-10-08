@@ -76,6 +76,21 @@ pub fn run(args: RunArgs) -> ExitCode {
     );
     ui::field("system", &format!("{} {}", machine.os, machine.arch));
     ui::field("compiler", &machine.rustc);
+    ui::field(
+        "c compiler",
+        machine.c_compiler.as_deref().unwrap_or("not found"),
+    );
+    ui::field(
+        "commit",
+        &machine.commit.as_deref().map_or("unknown".to_owned(), |c| {
+            let short = c.get(..10).unwrap_or(c);
+            if machine.dirty == Some(true) {
+                format!("{short} (dirty)")
+            } else {
+                short.to_owned()
+            }
+        }),
+    );
     let placement = match placement::choose(args.cpu) {
         Ok(placement) => placement,
         Err(e) => {
@@ -210,7 +225,9 @@ pub fn run(args: RunArgs) -> ExitCode {
             cpu_count: machine.cpu_count,
             cpu_features: machine.cpu_features,
             rustc: machine.rustc,
-            commit: std::env::var("GITHUB_SHA").ok().filter(|s| !s.is_empty()),
+            c_compiler: machine.c_compiler,
+            commit: machine.commit,
+            dirty: machine.dirty,
             quick: args.quick,
             preflight: Some(Preflight {
                 cpu_busy_pct: cpu_busy_pct.map(|p| (p * 10.0).round() / 10.0),
