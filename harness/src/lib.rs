@@ -131,7 +131,7 @@ pub fn run<T: ChaCha20Poly1305>(library: &'static str, manifest: Manifest) -> Ex
     }
 
     let cipher = T::new(&[0x42; 32]);
-    let nonce = [0u8; 12];
+    let nonce = nonce(u64::from(std::process::id()));
     let plaintext = message(SIZE);
     let mut sealed = vec![0; SIZE + TAG_LEN];
     cipher.seal(&nonce, &[], &plaintext, &mut sealed);
@@ -199,6 +199,14 @@ fn prefer_fast_cores() {
             eprintln!("warning: could not raise the thread's QoS class");
         }
     }
+}
+
+/// A WireGuard transport nonce: four zero bytes, then the packet counter in little-endian.
+fn nonce(counter: u64) -> [u8; 12] {
+    [&0u32.to_le_bytes()[..], &counter.to_le_bytes()[..]]
+        .concat()
+        .try_into()
+        .unwrap()
 }
 
 /// A message of `len` bytes.
