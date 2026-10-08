@@ -34,6 +34,11 @@ const formatDate = (iso) => iso.replace("T", " ").replace(/:\d\dZ$/, " UTC");
 
 // Runs on the same hardware belong together, whatever label they were submitted under.
 const machineKey = (run) => [run.meta.cpu, run.meta.arch, run.meta.os].join("|");
+const machineSlug = (key) =>
+  key
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 
 function groupMachines(runs) {
   const groups = new Map();
@@ -213,11 +218,14 @@ function setup(data) {
   );
   machineSelect.replaceChildren(...options);
 
+  const bySlug = new Map([...groups.keys()].map((key) => [machineSlug(key), key]));
+  const fromHash = () => bySlug.get(decodeURIComponent(location.hash.slice(1)));
+
   let stored = null;
   try {
     stored = localStorage.getItem(STORAGE_KEY);
   } catch {}
-  machineSelect.value = groups.has(stored) ? stored : [...groups.keys()][0];
+  machineSelect.value = fromHash() ?? (groups.has(stored) ? stored : [...groups.keys()][0]);
 
   const showMachine = () => {
     const runs = groups.get(machineSelect.value);
@@ -226,11 +234,19 @@ function setup(data) {
     );
     runSelect.disabled = runs.length < 2;
     render(runs[0], colors);
+    history.replaceState(null, "", `#${machineSlug(machineSelect.value)}`);
     try {
       localStorage.setItem(STORAGE_KEY, machineSelect.value);
     } catch {}
   };
   machineSelect.addEventListener("change", showMachine);
+  window.addEventListener("hashchange", () => {
+    const key = fromHash();
+    if (key && key !== machineSelect.value) {
+      machineSelect.value = key;
+      showMachine();
+    }
+  });
   runSelect.addEventListener("change", () => render(groups.get(machineSelect.value)[Number(runSelect.value)], colors));
 
   document.getElementById("controls").hidden = false;
