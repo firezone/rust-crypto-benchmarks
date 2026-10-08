@@ -36,7 +36,8 @@
         Each implementation is measured in several interleaved rounds, pinned to the fastest core; the
         median is the median of the round medians and the spread is half the range of the round
         medians, relative to the median. Throughput is the message rate at the median, in gigabits
-        per second. Each iteration includes copying a fresh message into the working buffer.
+        per second. Each operation reads the message from one buffer and writes the result to another;
+        libraries with an in-place API copy it first.
       </p>
     </footer>
 

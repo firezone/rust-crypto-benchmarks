@@ -24,18 +24,28 @@ pub const TAG_LEN: usize = 16;
 pub const SIZE: usize = 1280;
 
 /// The AEAD protecting WireGuard transport data.
+///
+/// Both operations read the message from `src` and write the result to `dst`, as a WireGuard
+/// implementation does from its receive buffer into its send buffer. A library with only an
+/// in-place API copies `src` into `dst` first.
 pub trait ChaCha20Poly1305 {
     fn new(key: &[u8; 32]) -> Self;
 
-    /// Encrypts `in_out[..len - 16]` in place and writes the tag to `in_out[len - 16..]`.
-    fn seal_in_place(&self, nonce: &[u8; 12], aad: &[u8], in_out: &mut [u8]);
+    /// Encrypts `src` into `dst[..src.len()]` and writes the tag to `dst[src.len()..]`.
+    ///
+    /// `dst` is [`TAG_LEN`] bytes longer than `src`.
+    fn seal(&self, nonce: &[u8; 12], aad: &[u8], src: &[u8], dst: &mut [u8]);
 
-    /// Decrypts `in_out[..len - 16]` in place after verifying the tag in `in_out[len - 16..]`.
-    fn open_in_place(
+    /// Verifies the tag in `src[len - 16..]` and decrypts `src[..len - 16]` into
+    /// `dst[..len - 16]`.
+    ///
+    /// `dst` is as long as `src`; its last [`TAG_LEN`] bytes are scratch space.
+    fn open(
         &self,
         nonce: &[u8; 12],
         aad: &[u8],
-        in_out: &mut [u8],
+        src: &[u8],
+        dst: &mut [u8],
     ) -> Result<(), OpenError>;
 }
 
@@ -122,23 +132,28 @@ pub fn run<T: ChaCha20Poly1305>(library: &'static str, manifest: Manifest) -> Ex
 
     let cipher = T::new(&[0x42; 32]);
     let nonce = [0u8; 12];
-    let plaintext = input(SIZE);
-    let mut sealed = plaintext.clone();
-    cipher.seal_in_place(&nonce, &[], &mut sealed);
-    let mut buf = plaintext.clone();
+    let plaintext = message(SIZE);
+    let mut sealed = vec![0; SIZE + TAG_LEN];
+    cipher.seal(&nonce, &[], &plaintext, &mut sealed);
+    let mut dst = vec![0; SIZE + TAG_LEN];
 
-    // Every iteration copies a fresh message into the working buffer. Opening needs this to get a
-    // valid ciphertext each time; sealing does it too so both directions carry the same (small,
-    // implementation-independent) overhead.
     eprintln!("bench seal");
     let seal = measure::run(&config, || {
-        buf.copy_from_slice(black_box(&plaintext));
-        cipher.seal_in_place(black_box(&nonce), black_box(&[]), black_box(&mut buf));
+        cipher.seal(
+            black_box(&nonce),
+            black_box(&[]),
+            black_box(&plaintext),
+            black_box(&mut dst),
+        );
     });
     eprintln!("bench open");
     let open = measure::run(&config, || {
-        buf.copy_from_slice(black_box(&sealed));
-        let res = cipher.open_in_place(black_box(&nonce), black_box(&[]), black_box(&mut buf));
+        let res = cipher.open(
+            black_box(&nonce),
+            black_box(&[]),
+            black_box(&sealed),
+            black_box(&mut dst),
+        );
         assert!(res.is_ok());
     });
 
@@ -186,9 +201,7 @@ fn prefer_fast_cores() {
     }
 }
 
-/// A message of `len` bytes followed by room for the tag.
-fn input(len: usize) -> Vec<u8> {
-    let mut message: Vec<u8> = (0..len).map(|i| (i % 251) as u8).collect();
-    message.extend_from_slice(&[0; TAG_LEN]);
-    message
+/// A message of `len` bytes.
+fn message(len: usize) -> Vec<u8> {
+    (0..len).map(|i| (i % 251) as u8).collect()
 }
