@@ -9,9 +9,16 @@ permissions:
   contents: read
 
 jobs:
-  validate:
-    runs-on: ubuntu-24.04
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm, macos-latest, windows-latest]
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install Rust
@@ -23,12 +30,15 @@ jobs:
           fi
           rustup toolchain install
       - run: ./lint.sh
-      - name: Check the macOS and Windows code paths
-        run: |
-          for target in aarch64-apple-darwin x86_64-pc-windows-msvc; do
-            rustup target add "$target"
-            cargo clippy --locked --target "$target" -- -D warnings
-            cargo clippy --locked --target "$target" --manifest-path harness/Cargo.toml -- -D warnings
-          done
       - run: cargo run --locked -- validate
       - run: node --check site/app.js
+
+  # The single check that branch protection requires.
+  validate:
+    needs: check
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - env:
+          RESULT: ${{ needs.check.result }}
+        run: test "$RESULT" = success
