@@ -58,4 +58,3 @@ jobs:
       - run: rustup toolchain install
       - run: cargo fmt --check --manifest-path "impls/${{ matrix.impl }}/Cargo.toml"
       - run: cargo clippy --locked --all-targets --manifest-path "impls/${{ matrix.impl }}/Cargo.toml" -- -D warnings
-
