@@ -7,6 +7,7 @@ pub fn report(
     library: &str,
     manifest: &Manifest,
     config: &Config,
+    cycle_counter: Option<&str>,
     measurements: &[Measurement],
 ) -> String {
     let crates = direct_dependencies(manifest)
@@ -23,8 +24,11 @@ pub fn report(
         .iter()
         .map(|m| {
             let st = &m.stats;
+            let cycles = st
+                .cycles_per_byte(SIZE)
+                .map_or(String::new(), |c| format!(", \"cycles_per_byte\": {c:.3}"));
             format!(
-                "    {{ \"op\": {}, \"size\": {SIZE}, \"median_ns\": {:.3}, \"q1_ns\": {:.3}, \"q3_ns\": {:.3}, \"min_ns\": {:.3}, \"mib_per_s\": {:.2}, \"samples\": {}, \"iters_per_sample\": {} }}",
+                "    {{ \"op\": {}, \"size\": {SIZE}, \"median_ns\": {:.3}, \"q1_ns\": {:.3}, \"q3_ns\": {:.3}, \"min_ns\": {:.3}, \"mib_per_s\": {:.2}, \"samples\": {}, \"iters_per_sample\": {}{cycles} }}",
                 string(m.op),
                 st.median_ns,
                 st.q1_ns,
@@ -41,6 +45,9 @@ pub fn report(
     let _ = writeln!(s, "  \"impl\": {},", string(manifest.name()));
     let _ = writeln!(s, "  \"library\": {},", string(library));
     let _ = writeln!(s, "  \"crates\": [{}],", crates.join(", "));
+    if let Some(counter) = cycle_counter {
+        let _ = writeln!(s, "  \"cycle_counter\": {},", string(counter));
+    }
     let _ = writeln!(
         s,
         "  \"config\": {{ \"samples\": {}, \"sample_time_ms\": {}, \"warmup_ms\": {} }},",

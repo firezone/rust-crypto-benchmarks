@@ -1,5 +1,6 @@
 //! What the results say about the machine they were taken on.
 
+use std::path::Path;
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -10,6 +11,9 @@ pub struct Machine {
     pub cpu_count: Option<u32>,
     pub cpu_features: Vec<String>,
     pub rustc: String,
+    pub commit: Option<String>,
+    pub dirty: Option<bool>,
+    pub c_compiler: Option<String>,
 }
 
 impl Machine {
@@ -23,6 +27,10 @@ impl Machine {
                 .and_then(|n| u32::try_from(n.get()).ok()),
             cpu_features: cpu_features(),
             rustc: output("rustc", &["-V"]).unwrap_or_else(|| "unknown".to_owned()),
+            commit: output("git", &["rev-parse", "HEAD"])
+                .or_else(|| std::env::var("GITHUB_SHA").ok().filter(|s| !s.is_empty())),
+            dirty: dirty(),
+            c_compiler: c_compiler(),
         }
     }
 
@@ -63,6 +71,51 @@ fn output(cmd: &str, args: &[&str]) -> Option<String> {
     let text = String::from_utf8(out.stdout).ok()?;
     let text = text.trim();
     (out.status.success() && !text.is_empty()).then(|| text.to_owned())
+}
+
+/// Whether tracked files differ from `HEAD`; `None` when git is unavailable.
+fn dirty() -> Option<bool> {
+    let out = Command::new("git")
+        .args(["status", "--porcelain", "--untracked-files=no"])
+        .output()
+        .ok()?;
+    out.status.success().then_some(!out.stdout.is_empty())
+}
+
+/// The version banner of the C compiler `cc-rs` picks, which builds `ring` and `aws-lc-rs`.
+fn c_compiler() -> Option<String> {
+    if let Some(cc) = std::env::var("CC").ok().filter(|cc| !cc.is_empty()) {
+        return c_compiler_version(&cc);
+    }
+    let candidates: &[&str] = if cfg!(windows) {
+        &["cl", "cc"]
+    } else {
+        &["cc", "clang", "gcc"]
+    };
+    candidates.iter().find_map(|cc| c_compiler_version(cc))
+}
+
+/// The first line of the compiler's version banner. `cl` has no version flag and prints its
+/// banner to stderr instead.
+fn c_compiler_version(cc: &str) -> Option<String> {
+    let is_cl = Path::new(cc)
+        .file_stem()
+        .is_some_and(|s| s.eq_ignore_ascii_case("cl"));
+    let text = if is_cl {
+        Command::new(cc).output().ok()?.stderr
+    } else {
+        let out = Command::new(cc).arg("--version").output().ok()?;
+        if !out.status.success() {
+            return None;
+        }
+        out.stdout
+    };
+    String::from_utf8(text)
+        .ok()?
+        .lines()
+        .map(str::trim)
+        .find(|l| !l.is_empty())
+        .map(str::to_owned)
 }
 
 fn cpu_model() -> Option<String> {
