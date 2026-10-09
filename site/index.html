@@ -36,9 +36,10 @@
         Each implementation is measured in several interleaved rounds, pinned to the fastest core; the
         median is the median of the round medians and the spread is half the range of the round
         medians, relative to the median. Throughput is the message rate at the median, in gigabits
-        per second. Each iteration includes copying a fresh message into the working buffer. Cycles
-        per byte come from the CPU's own cycle counter where a user program can read it (Linux,
-        Apple silicon), so they compare across machines where time does not.
+        per second. Each operation reads the message from one buffer and writes the result to another;
+        libraries with an in-place API copy it first. Cycles per byte come from the CPU's own cycle
+        counter where a user program can read it (Linux, Apple silicon), so they compare across
+        machines where time does not.
       </p>
     </footer>
 

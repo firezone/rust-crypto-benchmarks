@@ -1,42 +1,26 @@
-//! libcrux only encrypts and decrypts out of place, so the in-place adapter first copies the
-//! input into a scratch buffer, as an in-place caller such as a WireGuard implementation would
-//! have to.
-
-use std::cell::RefCell;
 use std::process::ExitCode;
 
-use harness::{OpenError, TAG_LEN};
+use harness::OpenError;
 
-struct ChaCha20Poly1305 {
-    key: [u8; 32],
-    scratch: RefCell<Vec<u8>>,
-}
+struct ChaCha20Poly1305([u8; 32]);
 
 impl harness::ChaCha20Poly1305 for ChaCha20Poly1305 {
     fn new(key: &[u8; 32]) -> Self {
-        Self {
-            key: *key,
-            scratch: RefCell::new(Vec::new()),
-        }
+        Self(*key)
     }
 
-    fn seal_in_place(&self, nonce: &[u8; 12], aad: &[u8], in_out: &mut [u8]) {
-        let scratch = &mut *self.scratch.borrow_mut();
-        scratch.clear();
-        scratch.extend_from_slice(&in_out[..in_out.len() - TAG_LEN]);
-        libcrux_chacha20poly1305::encrypt(&self.key, scratch, in_out, aad, nonce).unwrap();
+    fn seal(&self, nonce: &[u8; 12], aad: &[u8], src: &[u8], dst: &mut [u8]) {
+        libcrux_chacha20poly1305::encrypt(&self.0, src, dst, aad, nonce).unwrap();
     }
 
-    fn open_in_place(
+    fn open(
         &self,
         nonce: &[u8; 12],
         aad: &[u8],
-        in_out: &mut [u8],
+        src: &[u8],
+        dst: &mut [u8],
     ) -> Result<(), OpenError> {
-        let scratch = &mut *self.scratch.borrow_mut();
-        scratch.clear();
-        scratch.extend_from_slice(in_out);
-        libcrux_chacha20poly1305::decrypt(&self.key, in_out, scratch, aad, nonce)
+        libcrux_chacha20poly1305::decrypt(&self.0, dst, src, aad, nonce)
             .map(|_| ())
             .map_err(|_| OpenError)
     }

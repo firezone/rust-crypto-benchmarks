@@ -56,10 +56,11 @@ arches = ["x86_64", "aarch64"]
 - Neither `-C target-cpu` nor `-C target-feature` is set: libraries choose their SIMD backends by
   runtime detection, as they would in a real deployment. Release builds use `lto = "fat"` and
   `codegen-units = 1` (see `.cargo/config.toml`), and the toolchain is pinned in `rust-toolchain.toml`.
-- Sealing and opening happen in place, as a WireGuard implementation does them. Every iteration
-  first copies a fresh message into the working buffer, which costs the same for every
-  implementation. libcrux only offers out-of-place encryption, so its adapter additionally copies
-  the input to a scratch buffer, which is the cost an in-place caller would pay.
+- Each operation reads the message from one buffer and writes the result to another, as a
+  WireGuard implementation does from its receive buffer into its send buffer. Libraries with an
+  in-place API (`ring`, `aws-lc-rs`, `graviola`, RustCrypto 0.10) first copy the message into the
+  output buffer, which is exactly what boringtun does with `ring`; libraries with an out-of-place
+  API (libcrux, RustCrypto 0.11) encrypt straight from one buffer into the other.
 - Where the CPU's cycle counter can be read without privileges, every batch also counts the cycles
   it took, and the result includes cycles per byte: the figure crypto libraries quote, and the one
   that compares across machines where nanoseconds do not. On Linux that is `perf_event_open`

@@ -1,6 +1,6 @@
 //! Known-answer tests, run before anything is benchmarked.
 
-use crate::{ChaCha20Poly1305, SIZE, TAG_LEN, input};
+use crate::{ChaCha20Poly1305, SIZE, TAG_LEN, message};
 
 fn hex(s: &str) -> Vec<u8> {
     let s: String = s.split_whitespace().collect();
@@ -25,7 +25,7 @@ fn check(what: &str, actual: &[u8], expected: &[u8]) -> Result<(), String> {
 const SUNSCREEN: &[u8] = b"Ladies and Gentlemen of the class of '99: If I could offer you only one tip for the future, sunscreen would be it.";
 
 /// RFC 8439 section 2.8.2, plus the tag for the benchmark input (same key, nonce and AAD,
-/// message `input(SIZE)`), which exercises the multi-block SIMD paths. That one was generated
+/// message `message(SIZE)`), which exercises the multi-block SIMD paths. That one was generated
 /// with OpenSSL.
 pub(crate) fn chacha20poly1305<T: ChaCha20Poly1305>() -> Result<(), String> {
     let key: [u8; 32] = hex("808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f")
@@ -42,33 +42,33 @@ pub(crate) fn chacha20poly1305<T: ChaCha20Poly1305>() -> Result<(), String> {
          3ff4def08e4b7a9de576d26586cec64b6116
          1ae10b594f09e26a7e902ecbd0600691",
     );
-    let mut buf = SUNSCREEN.to_vec();
-    buf.extend_from_slice(&[0; TAG_LEN]);
-    cipher.seal_in_place(&nonce, &aad, &mut buf);
-    check("RFC 8439 seal", &buf, &expected_ct)?;
+    let mut sealed = vec![0; SUNSCREEN.len() + TAG_LEN];
+    cipher.seal(&nonce, &aad, SUNSCREEN, &mut sealed);
+    check("RFC 8439 seal", &sealed, &expected_ct)?;
 
-    let mut buf = expected_ct.clone();
+    let mut opened = vec![0; expected_ct.len()];
     cipher
-        .open_in_place(&nonce, &aad, &mut buf)
+        .open(&nonce, &aad, &expected_ct, &mut opened)
         .map_err(|_| "RFC 8439 open: rejected a valid ciphertext".to_owned())?;
-    check("RFC 8439 open", &buf[..SUNSCREEN.len()], SUNSCREEN)?;
+    check("RFC 8439 open", &opened[..SUNSCREEN.len()], SUNSCREEN)?;
 
-    let mut buf = expected_ct;
-    buf[0] ^= 1;
-    if cipher.open_in_place(&nonce, &aad, &mut buf).is_ok() {
+    let mut tampered = expected_ct;
+    tampered[0] ^= 1;
+    if cipher.open(&nonce, &aad, &tampered, &mut opened).is_ok() {
         return Err("open accepted a tampered ciphertext".to_owned());
     }
 
-    let plaintext = input(SIZE);
-    let mut buf = plaintext.clone();
-    cipher.seal_in_place(&nonce, &aad, &mut buf);
+    let plaintext = message(SIZE);
+    let mut sealed = vec![0; SIZE + TAG_LEN];
+    cipher.seal(&nonce, &aad, &plaintext, &mut sealed);
     check(
         "1280-byte seal tag",
-        &buf[SIZE..],
+        &sealed[SIZE..],
         &hex("5c9b226aada83f5fe6bf25a5fd15e86b"),
     )?;
+    let mut opened = vec![0; SIZE + TAG_LEN];
     cipher
-        .open_in_place(&nonce, &aad, &mut buf)
+        .open(&nonce, &aad, &sealed, &mut opened)
         .map_err(|_| "1280-byte open: rejected its own ciphertext".to_owned())?;
-    check("1280-byte roundtrip", &buf[..SIZE], &plaintext[..SIZE])
+    check("1280-byte roundtrip", &opened[..SIZE], &plaintext)
 }

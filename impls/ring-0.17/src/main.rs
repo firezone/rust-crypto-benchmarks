@@ -1,6 +1,6 @@
 use std::process::ExitCode;
 
-use harness::{OpenError, TAG_LEN};
+use harness::OpenError;
 use ring::aead::{Aad, CHACHA20_POLY1305, LessSafeKey, Nonce, UnboundKey};
 
 struct ChaCha20Poly1305(LessSafeKey);
@@ -12,8 +12,9 @@ impl harness::ChaCha20Poly1305 for ChaCha20Poly1305 {
         ))
     }
 
-    fn seal_in_place(&self, nonce: &[u8; 12], aad: &[u8], in_out: &mut [u8]) {
-        let (msg, tag) = in_out.split_at_mut(in_out.len() - TAG_LEN);
+    fn seal(&self, nonce: &[u8; 12], aad: &[u8], src: &[u8], dst: &mut [u8]) {
+        let (msg, tag) = dst.split_at_mut(src.len());
+        msg.copy_from_slice(src);
         let t = self
             .0
             .seal_in_place_separate_tag(Nonce::assume_unique_for_key(*nonce), Aad::from(aad), msg)
@@ -21,14 +22,16 @@ impl harness::ChaCha20Poly1305 for ChaCha20Poly1305 {
         tag.copy_from_slice(t.as_ref());
     }
 
-    fn open_in_place(
+    fn open(
         &self,
         nonce: &[u8; 12],
         aad: &[u8],
-        in_out: &mut [u8],
+        src: &[u8],
+        dst: &mut [u8],
     ) -> Result<(), OpenError> {
+        dst.copy_from_slice(src);
         self.0
-            .open_in_place(Nonce::assume_unique_for_key(*nonce), Aad::from(aad), in_out)
+            .open_in_place(Nonce::assume_unique_for_key(*nonce), Aad::from(aad), dst)
             .map(|_| ())
             .map_err(|_| OpenError)
     }

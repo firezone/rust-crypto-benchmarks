@@ -13,25 +13,28 @@ impl harness::ChaCha20Poly1305 for ChaCha20Poly1305 {
         Self(chacha20poly1305::ChaCha20Poly1305::new(&Key::from(*key)))
     }
 
-    fn seal_in_place(&self, nonce: &[u8; 12], aad: &[u8], in_out: &mut [u8]) {
-        let (msg, tag) = in_out.split_at_mut(in_out.len() - TAG_LEN);
+    fn seal(&self, nonce: &[u8; 12], aad: &[u8], src: &[u8], dst: &mut [u8]) {
+        let (msg, tag) = dst.split_at_mut(src.len());
+        let buf = InOutBuf::new(src, msg).unwrap();
         let t = self
             .0
-            .encrypt_inout_detached(&Nonce::from(*nonce), aad, InOutBuf::from(msg))
+            .encrypt_inout_detached(&Nonce::from(*nonce), aad, buf)
             .unwrap();
         tag.copy_from_slice(&t);
     }
 
-    fn open_in_place(
+    fn open(
         &self,
         nonce: &[u8; 12],
         aad: &[u8],
-        in_out: &mut [u8],
+        src: &[u8],
+        dst: &mut [u8],
     ) -> Result<(), OpenError> {
-        let (msg, tag) = in_out.split_at_mut(in_out.len() - TAG_LEN);
-        let tag = <&Tag>::try_from(&*tag).unwrap();
+        let (ct, tag) = src.split_at(src.len() - TAG_LEN);
+        let tag = <&Tag>::try_from(tag).unwrap();
+        let buf = InOutBuf::new(ct, &mut dst[..ct.len()]).unwrap();
         self.0
-            .decrypt_inout_detached(&Nonce::from(*nonce), aad, InOutBuf::from(msg), tag)
+            .decrypt_inout_detached(&Nonce::from(*nonce), aad, buf, tag)
             .map_err(|_| OpenError)
     }
 }

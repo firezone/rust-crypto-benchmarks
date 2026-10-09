@@ -1,8 +1,8 @@
 "use strict";
 
 const OPS = [
-  { id: "seal", title: "Seal", note: "Encrypting a transport data packet in place." },
-  { id: "open", title: "Open", note: "Verifying and decrypting a transport data packet in place." },
+  { id: "seal", title: "Seal", note: "Encrypting a transport data packet from one buffer into another." },
+  { id: "open", title: "Open", note: "Verifying and decrypting a transport data packet from one buffer into another." },
 ];
 const LIBRARY_ORDER = ["ring", "RustCrypto", "libcrux", "graviola", "aws-lc-rs"];
 const STORAGE_KEY = "rust-crypto-benchmarks.machine";

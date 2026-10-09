@@ -15,8 +15,9 @@ impl harness::ChaCha20Poly1305 for ChaCha20Poly1305 {
         )))
     }
 
-    fn seal_in_place(&self, nonce: &[u8; 12], aad: &[u8], in_out: &mut [u8]) {
-        let (msg, tag) = in_out.split_at_mut(in_out.len() - TAG_LEN);
+    fn seal(&self, nonce: &[u8; 12], aad: &[u8], src: &[u8], dst: &mut [u8]) {
+        let (msg, tag) = dst.split_at_mut(src.len());
+        msg.copy_from_slice(src);
         let t = self
             .0
             .encrypt_in_place_detached(Nonce::from_slice(nonce), aad, msg)
@@ -24,13 +25,16 @@ impl harness::ChaCha20Poly1305 for ChaCha20Poly1305 {
         tag.copy_from_slice(&t);
     }
 
-    fn open_in_place(
+    fn open(
         &self,
         nonce: &[u8; 12],
         aad: &[u8],
-        in_out: &mut [u8],
+        src: &[u8],
+        dst: &mut [u8],
     ) -> Result<(), OpenError> {
-        let (msg, tag) = in_out.split_at_mut(in_out.len() - TAG_LEN);
+        let (ct, tag) = src.split_at(src.len() - TAG_LEN);
+        let msg = &mut dst[..ct.len()];
+        msg.copy_from_slice(ct);
         self.0
             .decrypt_in_place_detached(Nonce::from_slice(nonce), aad, msg, Tag::from_slice(tag))
             .map_err(|_| OpenError)
