@@ -5,6 +5,8 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
+use crate::rounds::{MAX_DRIFT_PCT, drift_pct};
+
 /// Version 2 added interleaved rounds (`meta.rounds`, `round_medians_ns`, `spread_pct`) and
 /// `meta.placement`. Version 1 files remain valid.
 pub const SCHEMA_VERSION: u32 = 2;
@@ -240,6 +242,13 @@ fn check(run: &RunFile) -> Result<(), String> {
                 if rounds.iter().any(|t| !t.is_finite() || *t <= 0.0) {
                     problems.push(format!(
                         "{name} {}: round medians must be positive",
+                        m.op.title()
+                    ));
+                }
+                let drift = drift_pct(rounds);
+                if drift > MAX_DRIFT_PCT {
+                    problems.push(format!(
+                        "{name} {}: the round medians disagree, their interquartile range is {drift:.1}% of the median (at most {MAX_DRIFT_PCT}%); the machine was busy or throttled, run again",
                         m.op.title()
                     ));
                 }

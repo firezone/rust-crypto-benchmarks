@@ -221,6 +221,23 @@ pub fn run(args: RunArgs) -> ExitCode {
     }
 
     print_table(&reports, cycles_note.as_deref());
+    let drifting = reports
+        .iter()
+        .filter(|r| {
+            r.results.iter().any(|m| {
+                rounds::drift_pct(m.round_medians_ns.as_deref().unwrap_or_default())
+                    > rounds::MAX_DRIFT_PCT
+            })
+        })
+        .map(|r| r.name.clone())
+        .collect::<Vec<_>>();
+    if !drifting.is_empty() {
+        ui::warning(&format!(
+            "the round medians of {} disagree by more than {}%: `validate` will not accept this file, so make the machine idle and run again",
+            drifting.join(", "),
+            rounds::MAX_DRIFT_PCT
+        ));
+    }
 
     let run = RunFile {
         schema: schema::SCHEMA_VERSION,
@@ -264,6 +281,11 @@ pub fn run(args: RunArgs) -> ExitCode {
         );
         if args.quick {
             ui::warning("this was a --quick run: run again without --quick before submitting");
+        }
+        if !drifting.is_empty() {
+            ui::warning(
+                "the round medians disagreed, so this file will not be accepted: run again before submitting",
+            );
         }
     }
 
